@@ -3,6 +3,7 @@ from .base import *  # noqa: F403
 
 # Prefer a Django-specific flag; some launchers set DEBUG to non-boolean values.
 DEBUG = env_bool("DJANGO_DEBUG", env_bool("DEBUG", True))  # noqa: F405
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 ALLOWED_HOSTS = list(  # noqa: F405
     dict.fromkeys(

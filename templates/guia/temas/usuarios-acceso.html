@@ -1,0 +1,25 @@
+<p>MotoService no tiene registro público. Un <strong>Propietario</strong> crea las cuentas de las personas autorizadas y cada una elige su propia contraseña.</p>
+
+<h2 id="roles">Propietario y Usuario</h2>
+<ul>
+  <li><strong>Propietario:</strong> además de trabajar con clientes, motos y servicios, puede crear, editar, desactivar y reactivar usuarios.</li>
+  <li><strong>Usuario:</strong> utiliza las funciones cotidianas del taller y administra solamente su propia cuenta.</li>
+</ul>
+
+<h2 id="crear">Crear una cuenta</h2>
+<ol class="guide-steps">
+  {% include "guia/_step.html" with numero=1 titulo="Abrí Usuarios" texto="La opción aparece en la navegación cuando tu rol es Propietario." %}
+  {% include "guia/_step.html" with numero=2 titulo="Elegí Nuevo usuario" texto="Completá nombre, apellido, usuario, correo y rol. No se pide una contraseña." %}
+  {% include "guia/_step.html" with numero=3 titulo="La persona recibe una invitación" texto="El enlace le permite elegir su contraseña dentro de las próximas 24 horas." %}
+</ol>
+{% include "guia/_tip.html" with texto="El Propietario nunca establece ni conoce la contraseña de otra persona." %}
+
+<h2 id="mi-cuenta">Mi cuenta</h2>
+<p>Desde <strong>Mi cuenta</strong> podés actualizar tu nombre, apellido y correo. Si cambiás el correo, MotoService solicita tu contraseña actual. Allí también encontrás la acción <strong>Cambiar contraseña</strong>.</p>
+
+<h2 id="recuperar">Recuperar una contraseña</h2>
+<p>En la pantalla de ingreso elegí <strong>¿Olvidaste tu contraseña?</strong>, ingresá tu correo y seguí el enlace recibido. La pantalla muestra siempre la misma confirmación, exista o no una cuenta asociada.</p>
+
+<h2 id="desactivar">Desactivar o reactivar</h2>
+<p>Desactivar cambia el estado de la cuenta y evita nuevos ingresos; no elimina los servicios ni el historial generado por esa persona. Podés reactivarla desde el mismo listado. MotoService siempre conserva al menos un Propietario activo.</p>
+

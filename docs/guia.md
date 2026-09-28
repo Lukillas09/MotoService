@@ -1,6 +1,6 @@
 # Guía de uso integrada
 
-La guía vive en templates bajo `templates/guia/`. No utiliza base de datos, modelos, CMS ni servicios externos. Las rutas requieren autenticación y el service worker no almacena el HTML privado.
+La guía vive en templates bajo `templates/guia/`. No utiliza base de datos, modelos, CMS ni servicios externos. Las rutas requieren autenticación y el service worker no almacena el HTML privado. La categoría “Usuarios y acceso” explica roles, invitaciones, Mi cuenta, recuperación y desactivación sin necesitar capturas adicionales.
 
 ## Capturas
 
@@ -33,3 +33,5 @@ Assets creados:
 ## Actualización
 
 Cada entrada de `apps/core/guia.py` declara el nombre esperado y un texto alternativo. La vista comprueba que el archivo exista antes de ofrecerlo al template. Para reemplazar una captura, se debe conservar el encuadre legible, optimizarla como WebP y volver a revisar que sólo muestre información ficticia.
+
+La FAQ también cubre que no hay registro público, por qué el email es necesario, cómo recuperar una contraseña y por qué desactivar una cuenta conserva el historial.

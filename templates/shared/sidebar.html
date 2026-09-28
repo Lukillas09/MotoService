@@ -1,4 +1,4 @@
-{% with namespace=request.resolver_match.namespace %}
+{% with namespace=request.resolver_match.namespace url_name=request.resolver_match.url_name %}
 <aside class="desktop-sidebar" aria-label="Navegación principal">
   <a class="sidebar-brand" href="{% url 'core:dashboard' %}" aria-label="MotoService, ir al inicio">
     {% include "shared/brand.html" %}
@@ -24,6 +24,14 @@
       {% include "shared/icon.html" with name="download" %}<span>Exportaciones</span>
     </a>
     <hr class="my-2">
+    <a class="sidebar-link {% if namespace == 'usuarios' and url_name == 'cuenta' or namespace == 'usuarios' and url_name == 'cambiar_contrasena' %}active{% endif %}" href="{% url 'usuarios:cuenta' %}" {% if namespace == 'usuarios' and url_name == 'cuenta' or namespace == 'usuarios' and url_name == 'cambiar_contrasena' %}aria-current="page"{% endif %}>
+      {% include "shared/icon.html" with name="user" %}<span>Mi cuenta</span>
+    </a>
+    {% if es_propietario_actual %}
+      <a class="sidebar-link {% if namespace == 'usuarios' and url_name != 'cuenta' and url_name != 'cambiar_contrasena' %}active{% endif %}" href="{% url 'usuarios:list' %}" {% if namespace == 'usuarios' and url_name != 'cuenta' and url_name != 'cambiar_contrasena' %}aria-current="page"{% endif %}>
+        {% include "shared/icon.html" with name="shield" %}<span>Usuarios</span>
+      </a>
+    {% endif %}
     <a class="sidebar-link {% if guia_activa %}active{% endif %}" href="{% url 'core:guia' %}" {% if guia_activa %}aria-current="page"{% endif %}>
       {% include "shared/icon.html" with name="help" %}<span>Guía de uso</span>
     </a>

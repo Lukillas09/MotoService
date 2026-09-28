@@ -14,13 +14,13 @@
       <noscript><p class="form-text">Elegí una categoría para consultar la guía.</p></noscript>
     </div>
   </header>
-  <p id="guide-results" class="text-secondary small" role="status" aria-live="polite" aria-atomic="true">9 categorías para acompañarte en el taller.</p>
+  <p id="guide-results" class="text-secondary small" role="status" aria-live="polite" aria-atomic="true">{{ temas|length }} categorías para acompañarte en el taller.</p>
   <div id="guide-topics" class="row g-3">
     {% for tema in temas %}{% include "guia/_topic_card.html" %}{% endfor %}
   </div>
   <div id="guide-empty" class="card p-4 text-center" hidden>
     <h2 class="h5">No encontramos una guía con ese término.</h2>
-    <p>Probá con: cliente, moto, servicio, mantenimiento o WhatsApp.</p>
+    <p>Probá con: cliente, moto, servicio, mantenimiento, usuario o contraseña.</p>
     <button type="button" class="btn btn-outline-primary align-self-center" id="guide-reset">Ver todas las categorías</button>
   </div>
 </div>

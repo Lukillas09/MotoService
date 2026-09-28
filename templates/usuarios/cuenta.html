@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Mi cuenta | MotoService{% endblock %}
+{% block content %}
+<div class="form-wrap account-page">
+  <header class="page-header">
+    <div>
+      <p class="page-eyebrow">Acceso personal</p>
+      <h1 class="page-title">Mi cuenta</h1>
+      <p class="page-subtitle">Actualizá tus datos y protegé tu acceso.</p>
+    </div>
+    <a class="btn btn-outline-primary btn-lg" href="{% url 'usuarios:cambiar_contrasena' %}">{% include "shared/icon.html" with name="shield" %} Cambiar contraseña</a>
+  </header>
+
+  {% if not user.email %}
+    <div class="alert alert-warning" role="alert">
+      <strong>No tenés un correo configurado.</strong> Agregalo para poder recuperar tu contraseña.
+    </div>
+  {% endif %}
+
+  <div class="card form-section-card">
+    <div class="card-body p-md-4">
+      <div class="account-summary mb-4">
+        <span class="avatar account-avatar">{{ user.get_username|slice:":1"|upper }}</span>
+        <span><small>Usuario</small><strong>{{ user.get_username }}</strong></span>
+        <span><small>Rol</small><strong>{{ rol }}</strong></span>
+      </div>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+        {% for field in form %}
+          <div class="mb-4 form-field{% if field.errors %} has-error{% endif %}">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="text-danger" aria-hidden="true">*</span>{% endif %}</label>
+            {{ field }}
+            {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+            {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
+        {% endfor %}
+        <div class="form-actions d-flex justify-content-end pt-2">
+          <button class="btn btn-primary btn-lg" type="submit">{% include "shared/icon.html" with name="check" %} Guardar perfil</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

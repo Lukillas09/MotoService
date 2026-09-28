@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="es">
+<body style="margin:0;padding:24px;background:#f4f7fb;color:#0c1d38;font-family:Arial,sans-serif">
+  <div style="max-width:560px;margin:auto;padding:32px;background:#fff;border:1px solid #dfe7f2;border-radius:16px">
+    <h1 style="font-size:24px;margin:0 0 16px">Tu acceso a MotoService está listo</h1>
+    <p>Hola{% if usuario.first_name %} {{ usuario.first_name }}{% endif %},</p>
+    <p>Se creó una cuenta para vos en MotoService{% if taller_nombre %} de {{ taller_nombre }}{% endif %}.</p>
+    <p style="margin:28px 0"><a href="{{ enlace }}" style="display:inline-block;padding:13px 20px;color:#fff;background:#075ee5;border-radius:10px;text-decoration:none;font-weight:bold">Crear contraseña</a></p>
+    <p style="color:#60738e">El enlace vence en 24 horas. Si no esperabas este mensaje, podés ignorarlo.</p>
+  </div>
+</body>
+</html>
+

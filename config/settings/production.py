@@ -2,6 +2,7 @@ from .base import *  # noqa: F403
 
 
 DEBUG = False
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 
 MIDDLEWARE = [  # noqa: F405
     "django.middleware.security.SecurityMiddleware",

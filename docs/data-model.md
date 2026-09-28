@@ -147,7 +147,22 @@ MantenimientoRealizado 1 ─── N SeguimientoMantenimiento N ─── 1 Clie
 SeguimientoMantenimiento 1 ─── N EventoSeguimientoMantenimiento
 ```
 
+## Usuario de Django y roles
+
+El acceso utiliza directamente `django.contrib.auth.models.User`. No existe un Custom User Model ni un modelo de perfil. Se reutilizan `username`, `first_name`, `last_name`, `email`, `password`, `is_active`, `is_staff` e `is_superuser`.
+
+Los roles funcionales se derivan sin una tabla propia:
+
+- `Propietario`: `is_superuser=True` o pertenencia al Group de Django `Propietario`;
+- `Usuario`: cualquier usuario autenticado que no cumple la condición anterior.
+
+Las cuentas creadas desde MotoService requieren un email único ignorando mayúsculas, validado en formularios y servicios sin alterar el schema histórico de `auth_user`. Una cuenta invitada se guarda con `is_active=True` y contraseña no usable hasta que la persona abre el enlace y elige una contraseña. `is_active=False` representa una cuenta desactivada; nunca se elimina desde la interfaz.
+
+Los posibles duplicados o emails vacíos anteriores a esta mejora no se corrigen automáticamente. Un superuser existente sin email conserva el acceso, ve el aviso en Mi cuenta y puede agregar uno. El listado de Propietarios señala grupos de emails históricos duplicados para su corrección manual.
+
+`Servicio.creado_por`, `SeguimientoMantenimiento.ultimo_contacto_por`, `SeguimientoMantenimiento.actualizado_por` y `EventoSeguimientoMantenimiento.usuario` continúan apuntando al usuario de Django. Desactivar una cuenta no modifica esas relaciones ni el historial.
+
 ## Entidades futuras
 
 - `Taller`: posible agrupación para soportar varios talleres en el futuro;
-- `Usuario`: acceso mediante Django Auth;
+- `TallerUsuario`: posible vínculo explícito si en el futuro se implementa multi-taller;

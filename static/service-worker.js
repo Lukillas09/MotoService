@@ -1,4 +1,4 @@
-const CACHE_NAME = "motoservice-static-v11";
+const CACHE_NAME = "motoservice-static-v12";
 const STATIC_ASSETS = [
   "/static/css/app.css",
   "/static/js/app.js",

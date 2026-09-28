@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Usuarios del taller | MotoService{% endblock %}
+{% block content %}
+<div class="content-wrap users-page">
+  <header class="page-header">
+    <div>
+      <p class="page-eyebrow">Acceso privado</p>
+      <h1 class="page-title">Usuarios del taller</h1>
+      <p class="page-subtitle">Creá cuentas y administrá quién puede ingresar a MotoService.</p>
+    </div>
+    <a class="btn btn-primary btn-lg" href="{% url 'usuarios:create' %}">{% include "shared/icon.html" with name="plus" %} Nuevo usuario</a>
+  </header>
+
+  {% if grupos_email_duplicado %}
+    <div class="alert alert-warning" role="alert">
+      Detectamos {{ grupos_email_duplicado }} correo{{ grupos_email_duplicado|pluralize:"s" }} compartido{{ grupos_email_duplicado|pluralize:"s" }} por cuentas históricas. Editá esas cuentas para que cada persona tenga un correo único; no modificamos ningún dato automáticamente.
+    </div>
+  {% endif %}
+
+  <div class="users-grid">
+    {% for fila in filas %}
+      {% with usuario=fila.usuario %}
+      <article class="card user-card">
+        <div class="card-body">
+          <div class="user-card-header">
+            <span class="avatar">{{ usuario.get_username|slice:":1"|upper }}</span>
+            <div class="min-width-0">
+              <h2>{{ usuario.get_full_name|default:usuario.username }}</h2>
+              <p>@{{ usuario.username }}</p>
+            </div>
+          </div>
+          <dl class="user-card-details">
+            <div><dt>Correo</dt><dd>{{ usuario.email|default:"Sin correo configurado" }}</dd></div>
+            <div><dt>Rol</dt><dd><span class="role-badge role-{{ fila.rol|lower }}">{{ fila.rol }}</span></dd></div>
+            <div><dt>Estado</dt><dd><span class="status-badge text-bg-{{ fila.tono }}">{{ fila.estado }}</span></dd></div>
+          </dl>
+
+          {% if fila.puede_gestionar %}
+            <div class="user-card-actions">
+              <a class="btn btn-outline-primary" href="{% url 'usuarios:update' usuario.pk %}">{% include "shared/icon.html" with name="edit" %} Editar</a>
+              {% if usuario.is_active %}
+                {% if fila.estado_codigo == "PENDIENTE" %}
+                  <form method="post" action="{% url 'usuarios:resend_invitation' usuario.pk %}" data-confirm-message="Se invalidará el enlace anterior y se enviará una nueva invitación.">
+                    {% csrf_token %}
+                    <button class="btn btn-outline-primary" type="submit">{% include "shared/icon.html" with name="mail" %} Reenviar invitación</button>
+                  </form>
+                {% endif %}
+                <form method="post" action="{% url 'usuarios:deactivate' usuario.pk %}" data-confirm-message="¿Querés desactivar a {{ usuario.get_username }}? No podrá ingresar hasta que lo reactives.">
+                  {% csrf_token %}
+                  <button class="btn btn-outline-danger" type="submit" {% if fila.ultimo_propietario %}disabled title="Debe quedar al menos un Propietario activo"{% endif %}>Desactivar usuario</button>
+                </form>
+              {% else %}
+                <form method="post" action="{% url 'usuarios:reactivate' usuario.pk %}">
+                  {% csrf_token %}
+                  <button class="btn btn-outline-success" type="submit">Reactivar</button>
+                </form>
+              {% endif %}
+            </div>
+          {% else %}
+            <p class="user-protected-note">Solo un superusuario puede administrar esta cuenta protegida.</p>
+          {% endif %}
+        </div>
+      </article>
+      {% endwith %}
+    {% empty %}
+      {% include "shared/empty_state.html" with icon="users" title="Todavía no hay usuarios" text="Creá la primera cuenta del taller." %}
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

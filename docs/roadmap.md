@@ -34,4 +34,8 @@ Rediseño final UX/UI responsive: sistema visual con tokens y estados consistent
 
 ## Mejora post-lanzamiento — Guía de uso — Implementada
 
-Centro de ayuda autenticado con nueve categorías, búsqueda local, pasos reutilizables, tips, avisos importantes, FAQ accesible, navegación desktop/mobile y ayuda contextual en reglas, seguimiento y exportaciones. El contenido se versiona con el código y no agrega modelos, CMS ni dependencias.
+Centro de ayuda autenticado con diez categorías, búsqueda local, pasos reutilizables, tips, avisos importantes, FAQ accesible, navegación desktop/mobile y ayuda contextual en reglas, seguimiento y exportaciones. El contenido se versiona con el código y no agrega modelos, CMS ni dependencias.
+
+## Mejora post-lanzamiento — Usuarios y recuperación — Implementada
+
+Gestión privada sobre Django Auth sin Custom User Model: roles Propietario/Usuario, alta por invitación, contraseña elegida por cada persona, recuperación por email, Mi cuenta, cambio de contraseña, desactivación/reactivación y protección del último Propietario y de superusers. Incluye SMTP por entorno, respuesta antienumeración, navegación responsive, guía y tests de seguridad. No agrega tablas ni registro público.

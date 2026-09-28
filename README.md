@@ -19,7 +19,9 @@ Cliente → Moto → Servicio → Mantenimiento → Alerta → Contacto
 
 ## Funcionalidad actual
 
-- autenticación con Django Auth y vistas operativas privadas;
+- autenticación con Django Auth, gestión privada de usuarios y vistas operativas privadas;
+- roles simples Propietario/Usuario, invitaciones por email y recuperación de contraseña;
+- perfil “Mi cuenta”, cambio de contraseña, desactivación y reactivación sin borrar historial;
 - alta, edición, búsqueda y archivado/restauración de clientes y motos;
 - búsqueda global por cliente, teléfono, patente, marca y modelo;
 - servicios con fecha, estado, kilometraje, trabajos, precio y observaciones;
@@ -90,9 +92,13 @@ Rutas principales:
 - `http://127.0.0.1:8000/mantenimientos/configuracion/`
 - `http://127.0.0.1:8000/exportaciones/`
 - `http://127.0.0.1:8000/guia/`
+- `http://127.0.0.1:8000/cuenta/`
+- `http://127.0.0.1:8000/usuarios/` (solo Propietario)
 - `http://127.0.0.1:8000/admin/`
 
 Las vistas operativas requieren iniciar sesión en `/accounts/login/`. El repositorio no incluye credenciales predeterminadas.
+
+No existe registro público. Un Propietario crea cada cuenta desde `/usuarios/`; la persona recibe un enlace de 24 horas para elegir su propia contraseña. Los superusuarios existentes se reconocen como Propietarios sin modificar sus flags. El rol Propietario también puede asignarse mediante el Group de Django `Propietario`; `is_staff` conserva su significado administrativo de Django y no representa el rol del taller.
 
 ## Interfaz y PWA
 
@@ -117,11 +123,30 @@ CSRF_TRUSTED_ORIGINS=
 DJANGO_SETTINGS_MODULE=config.settings.development
 WHATSAPP_DEFAULT_COUNTRY_CODE=549
 TALLER_NOMBRE=
+EMAIL_HOST=
+EMAIL_PORT=587
+EMAIL_HOST_USER=
+EMAIL_HOST_PASSWORD=
+EMAIL_USE_TLS=True
+EMAIL_USE_SSL=False
+DEFAULT_FROM_EMAIL=
+EMAIL_TIMEOUT=10
+PASSWORD_RESET_TIMEOUT=86400
 ```
 
 `WHATSAPP_DEFAULT_COUNTRY_CODE` se usa para normalizar teléfonos sin prefijo internacional y `TALLER_NOMBRE` personaliza el mensaje precargado. En producción, `SECRET_KEY` y `DATABASE_URL` son obligatorias; `SECRET_KEY=change-me` se rechaza.
 
 En desarrollo, `DJANGO_DEBUG` controla el modo de depuración y la entrega de estáticos de `runserver`. Tiene prioridad sobre la variable anterior `DEBUG`, que sigue siendo compatible con valores booleanos. Valores ajenos a Django, como `DEBUG=release` heredado del entorno, utilizan el valor predeterminado de desarrollo (`True`). Producción siempre fuerza `DEBUG=False`.
+
+El desarrollo usa `ConsoleEmailBackend`: al crear una cuenta o solicitar recuperación, el email y su enlace aparecen en la terminal de `runserver` sin contactar un proveedor. Los tests usan el backend en memoria. Producción usa SMTP y requiere configurar sus variables en Railway antes de utilizar invitaciones o recuperación reales. `EMAIL_USE_TLS` y `EMAIL_USE_SSL` no pueden activarse simultáneamente.
+
+Para probar localmente con SQLite, dejá `DATABASE_URL` vacío y ejecutá:
+
+```powershell
+.\.venv\Scripts\python.exe manage.py runserver 8001
+```
+
+Abrí el enlace de invitación o recuperación que Django imprime en esa misma terminal. Usá únicamente cuentas y correos ficticios durante las pruebas.
 
 ## Verificaciones
 
@@ -152,8 +177,19 @@ El proyecto incluye `Procfile` y `railway.json`. En Railway se deben configurar:
 - `CSRF_TRUSTED_ORIGINS`
 - `WHATSAPP_DEFAULT_COUNTRY_CODE`
 - `TALLER_NOMBRE`
+- `EMAIL_HOST`
+- `EMAIL_PORT`
+- `EMAIL_HOST_USER`
+- `EMAIL_HOST_PASSWORD`
+- `EMAIL_USE_TLS`
+- `EMAIL_USE_SSL`
+- `DEFAULT_FROM_EMAIL`
+- `EMAIL_TIMEOUT`
+- `PASSWORD_RESET_TIMEOUT`
 
 La configuración de producción fuerza `DEBUG=False`, exige PostgreSQL con SSL, confía en el proxy HTTPS de Railway, redirige a HTTPS y usa cookies seguras. El comando de inicio ejecuta migraciones, `collectstatic` y luego Gunicorn.
+
+Las credenciales SMTP se configuran únicamente como variables del servicio. Nunca deben copiarse al repositorio, README, logs ni templates. Los enlaces de email se construyen desde el request y respetan el proxy HTTPS; no contienen un dominio hardcodeado.
 
 ## Exportaciones y backups
 

@@ -15,10 +15,10 @@
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   {% block extra_head %}{% endblock %}
 </head>
-<body class="{% if user.is_authenticated %}app-authenticated{% else %}app-public{% endif %} {% block body_class %}{% endblock %}">
+<body class="{% if user.is_authenticated and not force_public_layout %}app-authenticated{% else %}app-public{% endif %} {% block body_class %}{% endblock %}">
   <a class="skip-link" href="#main-content">Saltar al contenido</a>
 
-  {% if user.is_authenticated %}
+  {% if user.is_authenticated and not force_public_layout %}
     {% include "shared/sidebar.html" %}
     <div class="app-main">
       <header class="app-topbar">
@@ -38,13 +38,13 @@
           <a class="topbar-icon-link" href="{% url 'notificaciones:alertas' %}" aria-label="Ver alertas de mantenimiento">
             {% include "shared/icon.html" with name="alert" %}
           </a>
-          <div class="topbar-user">
+          <a class="topbar-user" href="{% url 'usuarios:cuenta' %}" aria-label="Abrir Mi cuenta">
             <span class="avatar">{{ user.get_username|slice:":1"|upper }}</span>
             <span class="topbar-user-copy">
               <strong>{{ user.get_full_name|default:"Usuario del taller" }}</strong>
-              <small>Sesión activa</small>
+              <small>{% if rol_usuario_actual == "PROPIETARIO" %}Propietario{% else %}Usuario{% endif %}</small>
             </span>
-          </div>
+          </a>
         </div>
       </header>
 

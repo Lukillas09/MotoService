@@ -70,13 +70,23 @@ TEMAS = (
         ),
     },
     {
+        "slug": "usuarios-acceso",
+        "titulo": "Usuarios y acceso",
+        "descripcion": "Creá accesos privados y recuperá una contraseña por email.",
+        "icono": "shield",
+        "keywords": (
+            "usuario propietario cuenta acceso invitación correo email contraseña "
+            "recuperar desactivar reactivar"
+        ),
+    },
+    {
         "slug": "preguntas-frecuentes",
         "titulo": "Preguntas frecuentes",
         "descripcion": "Respuestas rápidas a las dudas del día a día.",
         "icono": "help",
         "keywords": (
             "faq ayuda eliminar dueño alerta whatsapp contactado posponer turno "
-            "cancelado descargar internet"
+            "cancelado descargar internet cuenta contraseña email usuario propietario"
         ),
     },
 )

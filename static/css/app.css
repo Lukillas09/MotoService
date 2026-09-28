@@ -403,7 +403,15 @@ textarea {
   padding-left: 0.9rem;
   align-items: center;
   gap: 0.65rem;
+  color: inherit;
   border-left: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+}
+
+.topbar-user:hover .topbar-user-copy strong,
+.topbar-user:focus-visible .topbar-user-copy strong {
+  color: var(--color-primary);
 }
 
 .topbar-user-copy {
@@ -2525,6 +2533,77 @@ legend {
 .guide-faq .accordion-button { color: var(--color-ink); line-height: 1.5; }
 .guide-faq .accordion-button:not(.collapsed) { color: var(--color-primary); background: var(--color-primary-soft); }
 .guide-faq .accordion-item { border-color: var(--border-color); }
+
+/* Usuarios y acceso */
+.users-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  gap: 1rem;
+}
+
+.user-card { min-width: 0; }
+.user-card .card-body { display: flex; height: 100%; padding: 1.25rem; flex-direction: column; }
+.user-card-header { display: flex; align-items: center; gap: 0.8rem; }
+.user-card-header h2 { overflow: hidden; margin: 0; color: var(--color-ink); font-size: 1.05rem; text-overflow: ellipsis; white-space: nowrap; }
+.user-card-header p { overflow: hidden; margin: 0.1rem 0 0; color: var(--color-muted); text-overflow: ellipsis; white-space: nowrap; }
+.user-card-details { display: grid; margin: 1.15rem 0; gap: 0.75rem; }
+.user-card-details > div { display: grid; grid-template-columns: 5rem minmax(0, 1fr); gap: 0.6rem; }
+.user-card-details dt { color: var(--color-muted); font-size: 0.78rem; font-weight: 700; }
+.user-card-details dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
+
+.role-badge {
+  display: inline-flex;
+  padding: 0.32rem 0.6rem;
+  color: #43566f;
+  background: var(--surface-secondary);
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
+.role-propietario { color: #5140ad; background: var(--color-purple-soft); }
+.user-card-actions { display: flex; margin-top: auto; flex-wrap: wrap; gap: 0.55rem; }
+.user-card-actions form { display: contents; }
+.user-card-actions .btn { min-height: 2.75rem; }
+.user-protected-note { margin: auto 0 0; padding-top: 0.75rem; color: var(--color-muted); font-size: 0.82rem; }
+
+.account-summary {
+  display: grid;
+  grid-template-columns: auto repeat(2, minmax(0, 1fr));
+  padding: 1rem;
+  align-items: center;
+  gap: 1rem;
+  background: var(--surface-secondary);
+  border-radius: var(--radius-md);
+}
+
+.account-summary > span:not(.avatar) { display: grid; min-width: 0; }
+.account-summary small { color: var(--color-muted); }
+.account-summary strong { overflow: hidden; text-overflow: ellipsis; }
+.account-avatar { width: 3rem; height: 3rem; }
+.auth-form-content { width: 100%; }
+
+.auth-status-icon {
+  display: grid;
+  width: 3.25rem;
+  height: 3.25rem;
+  margin-bottom: 1rem;
+  place-items: center;
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+  border-radius: 1rem;
+}
+
+.auth-status-success { color: var(--color-success); background: var(--color-success-soft); }
+.auth-status-icon .ui-icon { width: 1.5rem; height: 1.5rem; }
+.password-help ul { margin: 0.45rem 0 0; padding-left: 1.2rem; }
+
+@media (max-width: 575.98px) {
+  .user-card-actions,
+  .user-card-actions .btn { width: 100%; }
+  .account-summary { grid-template-columns: auto 1fr; }
+  .account-summary > span:last-child { grid-column: 2; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *,

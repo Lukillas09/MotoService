@@ -24,6 +24,18 @@ La arquitectura evita Redis, Celery, servicios adicionales y frontend separado m
 
 Las vistas privadas usan Django Auth. Los listados y filtros conservan un fallback HTTP normal y HTMX se limita a reemplazar resultados o mostrar el contexto de la moto seleccionada.
 
+## Usuarios y recuperación de acceso
+
+La aplicación conserva `django.contrib.auth.models.User`; no define `AUTH_USER_MODEL`, perfiles paralelos ni tablas propias de roles. Un usuario es Propietario si es superuser o pertenece al Group `Propietario`. Cualquier otro usuario autenticado tiene rol Usuario. `is_staff` no interviene en esta decisión.
+
+La app `usuarios`, que no tiene modelos, centraliza formularios, autorización, reglas de gestión y emails. Sus vistas administrativas validan el rol en backend: una persona no autenticada vuelve al login y una autenticada sin rol Propietario recibe HTTP 403. Las mutaciones de estado e invitación aceptan exclusivamente POST con CSRF. Los superusers quedan protegidos frente a Propietarios normales y nunca se permite desactivar o degradar al último Propietario activo.
+
+El alta guarda un `User` activo con contraseña no usable y, una vez cerrada la transacción, intenta enviar la invitación. Se reutilizan `default_token_generator`, UID en base64 y `PasswordResetConfirmView`; no se persisten tokens. Reenviar o cambiar el email de una cuenta pendiente renueva la contraseña no usable e invalida el enlace previo. Un fallo del proveedor conserva la cuenta pendiente y permite reintentar sin exponer detalles SMTP.
+
+La recuperación pública usa las vistas y validadores de Django, responde de la misma manera para un correo válido, inexistente o inactivo y evita envíos ambiguos cuando detecta duplicados históricos. El timeout es configurable y por defecto dura 24 horas. Cambiar el email propio exige la contraseña actual; `PasswordChangeView` mantiene la sesión mediante el mecanismo oficial de Django.
+
+Desarrollo imprime emails en consola, tests usa memoria y producción usa SMTP configurado por entorno. Los enlaces absolutos se crean desde el request, por lo que `SECURE_PROXY_SSL_HEADER` preserva HTTPS detrás de Railway. Ningún HTML de cuenta, usuarios o recuperación entra en la caché PWA.
+
 ## Cálculo de mantenimientos
 
 La fuente de verdad está en `apps/mantenimientos/services.py`. Ese servicio de dominio suma meses calendario, selecciona el último mantenimiento válido por moto y tipo, calcula los límites de fecha y kilometraje y devuelve estados derivados. Dashboard, alertas y ficha de moto consumen el mismo resultado y no repiten reglas en vistas o templates.

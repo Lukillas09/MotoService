@@ -125,3 +125,111 @@ print(json.dumps({'debug': settings.DEBUG, 'responses': responses}))
             with self.subTest(django_debug=django_debug, legacy_debug=legacy_debug):
                 result = self.probe_runserver(django_debug, legacy_debug)
                 self.assertEqual(result["debug"], expected)
+
+    def probe_email_settings(self, settings_module):
+        environment = os.environ.copy()
+        environment.update(
+            DJANGO_SETTINGS_MODULE=settings_module,
+            SECRET_KEY="test-only-secret-key",
+            DATABASE_URL=(
+                "postgresql://test:test@localhost:5432/test"
+                if settings_module.endswith("production")
+                else "sqlite:///:memory:"
+            ),
+            ALLOWED_HOSTS="testserver",
+            EMAIL_HOST="smtp.example.test",
+            EMAIL_PORT="2525",
+            EMAIL_HOST_USER="test-user",
+            EMAIL_HOST_PASSWORD="test-password",
+            EMAIL_USE_TLS="True",
+            EMAIL_USE_SSL="False",
+            DEFAULT_FROM_EMAIL="MotoService <no-reply@example.test>",
+            EMAIL_TIMEOUT="12",
+            PASSWORD_RESET_TIMEOUT="86400",
+        )
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                """
+import json
+import django
+django.setup()
+from django.conf import settings
+print(json.dumps({
+    'backend': settings.EMAIL_BACKEND,
+    'host': settings.EMAIL_HOST,
+    'port': settings.EMAIL_PORT,
+    'tls': settings.EMAIL_USE_TLS,
+    'ssl': settings.EMAIL_USE_SSL,
+    'from_email': settings.DEFAULT_FROM_EMAIL,
+    'timeout': settings.EMAIL_TIMEOUT,
+    'reset_timeout': settings.PASSWORD_RESET_TIMEOUT,
+}))
+""",
+            ],
+            cwd=Path(settings.BASE_DIR),
+            env=environment,
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=True,
+        )
+        return json.loads(result.stdout)
+
+    def test_backends_email_por_entorno(self):
+        desarrollo = self.probe_email_settings("config.settings.development")
+        produccion = self.probe_email_settings("config.settings.production")
+
+        self.assertEqual(
+            desarrollo["backend"],
+            "django.core.mail.backends.console.EmailBackend",
+        )
+        self.assertEqual(
+            produccion["backend"],
+            "django.core.mail.backends.smtp.EmailBackend",
+        )
+        self.assertEqual(produccion["host"], "smtp.example.test")
+        self.assertEqual(produccion["port"], 2525)
+        self.assertTrue(produccion["tls"])
+        self.assertFalse(produccion["ssl"])
+        self.assertEqual(produccion["timeout"], 12)
+        self.assertEqual(produccion["reset_timeout"], 86400)
+
+    def test_tls_y_ssl_no_pueden_activarse_juntos(self):
+        environment = os.environ.copy()
+        environment.update(
+            DJANGO_SETTINGS_MODULE="config.settings.test",
+            DATABASE_URL="sqlite:///:memory:",
+            EMAIL_USE_TLS="True",
+            EMAIL_USE_SSL="True",
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", "import django; django.setup()"],
+            cwd=Path(settings.BASE_DIR),
+            env=environment,
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("cannot both be enabled", result.stderr)
+
+    def test_env_example_documenta_email_sin_credenciales(self):
+        contenido = (Path(settings.BASE_DIR) / ".env.example").read_text(
+            encoding="utf-8"
+        )
+        for nombre in (
+            "EMAIL_HOST",
+            "EMAIL_PORT",
+            "EMAIL_HOST_USER",
+            "EMAIL_HOST_PASSWORD",
+            "EMAIL_USE_TLS",
+            "EMAIL_USE_SSL",
+            "DEFAULT_FROM_EMAIL",
+            "EMAIL_TIMEOUT",
+            "PASSWORD_RESET_TIMEOUT",
+        ):
+            self.assertIn(f"{nombre}=", contenido)
+        self.assertIn("EMAIL_HOST_PASSWORD=\n", contenido.replace("\r\n", "\n"))

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block body_class %}login-page{% endblock %}
+
+{% block public_content %}
+<div class="login-shell">
+  <section class="login-brand-panel" aria-label="MotoService">
+    {% include "shared/brand.html" %}
+    <div class="login-brand-message">
+      <h2>Tu taller, organizado y siempre en marcha.</h2>
+      <p>Acceso privado para las personas autorizadas del taller.</p>
+    </div>
+    {% include "shared/icon.html" with name="moto-solid" extra_class="login-moto-mark" %}
+  </section>
+
+  <section class="login-form-panel">
+    <div class="auth-form-content">
+      {% block auth_content %}{% endblock %}
+    </div>
+  </section>
+</div>
+{% endblock %}
+

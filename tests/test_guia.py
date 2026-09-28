@@ -114,7 +114,7 @@ class GuiaTests(TestCase):
         response = self.client.get(
             reverse("core:guia_tema", args=["preguntas-frecuentes"])
         )
-        self.assertContains(response, 'data-bs-toggle="collapse"', count=9)
+        self.assertContains(response, 'data-bs-toggle="collapse"', count=13)
         self.assertContains(response, 'aria-controls="respuesta-whatsapp"')
         self.assertContains(response, '<noscript>')
         self.assertContains(response, 'id="respuesta-whatsapp"')

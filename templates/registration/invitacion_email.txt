@@ -1,0 +1,10 @@
+Hola{% if usuario.first_name %} {{ usuario.first_name }}{% endif %},
+
+Se creó una cuenta para vos en MotoService{% if taller_nombre %} de {{ taller_nombre }}{% endif %}.
+
+Usá este enlace dentro de las próximas 24 horas para elegir tu contraseña y comenzar:
+{{ enlace }}
+
+Si no esperabas este mensaje, podés ignorarlo.
+
+MotoService

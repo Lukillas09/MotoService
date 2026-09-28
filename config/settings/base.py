@@ -2,6 +2,7 @@ from pathlib import Path
 import os
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 
@@ -27,6 +28,16 @@ def env_list(name, default=""):
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def env_int(name, default):
+    value = os.getenv(name)
+    if value is None or not value.strip():
+        return default
+    try:
+        return int(value)
+    except ValueError as error:
+        raise ImproperlyConfigured(f"{name} must be an integer.") from error
+
+
 SECRET_KEY = os.getenv("SECRET_KEY", "change-me")
 DEBUG = env_bool("DEBUG", False)
 
@@ -37,6 +48,24 @@ WHATSAPP_DEFAULT_COUNTRY_CODE = os.getenv(
     "549",
 ).strip()
 TALLER_NOMBRE = os.getenv("TALLER_NOMBRE", "").strip()
+
+EMAIL_HOST = os.getenv("EMAIL_HOST", "").strip()
+EMAIL_PORT = env_int("EMAIL_PORT", 587)
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "").strip()
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
+EMAIL_USE_SSL = env_bool("EMAIL_USE_SSL", False)
+DEFAULT_FROM_EMAIL = (
+    os.getenv("DEFAULT_FROM_EMAIL", "MotoService <noreply@localhost>").strip()
+    or "MotoService <noreply@localhost>"
+)
+EMAIL_TIMEOUT = env_int("EMAIL_TIMEOUT", 10)
+PASSWORD_RESET_TIMEOUT = env_int("PASSWORD_RESET_TIMEOUT", 86400)
+
+if EMAIL_USE_TLS and EMAIL_USE_SSL:
+    raise ImproperlyConfigured(
+        "EMAIL_USE_TLS and EMAIL_USE_SSL cannot both be enabled."
+    )
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -52,6 +81,7 @@ INSTALLED_APPS = [
     "apps.mantenimientos",
     "apps.notificaciones",
     "apps.exportaciones",
+    "apps.usuarios",
 ]
 
 MIDDLEWARE = [
@@ -76,6 +106,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "apps.usuarios.context_processors.roles_usuario",
             ],
         },
     },

@@ -1,45 +1,32 @@
-{% extends "base.html" %}
+{% extends "registration/auth_base.html" %}
 
 {% block title %}Ingresar | MotoService{% endblock %}
-{% block body_class %}login-page{% endblock %}
 
-{% block public_content %}
-<div class="login-shell">
-  <section class="login-brand-panel" aria-label="MotoService">
-    {% include "shared/brand.html" %}
-    <div class="login-brand-message">
-      <h2>Tu taller, organizado y siempre en marcha.</h2>
-      <p>Clientes, motos, servicios y mantenimientos en un único lugar.</p>
+{% block auth_content %}
+  <p class="page-eyebrow">Acceso privado</p>
+  <h1 class="h2 mb-2">Bienvenido</h1>
+  <p class="text-secondary mb-4">Ingresá para continuar al panel del taller.</p>
+
+  {% if form.errors %}
+    <div class="alert alert-danger" role="alert">
+      Usuario o contraseña incorrectos.
     </div>
-    {% include "shared/icon.html" with name="moto-solid" extra_class="login-moto-mark" %}
-  </section>
+  {% endif %}
 
-  <section class="login-form-panel">
-    <div>
-      <p class="page-eyebrow">Acceso privado</p>
-      <h1 class="h2 mb-2">Bienvenido</h1>
-      <p class="text-secondary mb-4">Ingresá para continuar al panel del taller.</p>
-
-      {% if form.errors %}
-        <div class="alert alert-danger" role="alert">
-          Usuario o contraseña incorrectos.
-        </div>
-      {% endif %}
-
-      <form method="post" novalidate>
-        {% csrf_token %}
-        {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
-        <div class="mb-3">
-          <label class="form-label" for="{{ form.username.id_for_label }}">Usuario</label>
-          <input class="form-control form-control-lg" type="text" name="{{ form.username.name }}" id="{{ form.username.id_for_label }}" value="{{ form.username.value|default:'' }}" autocomplete="username" autofocus required>
-        </div>
-        <div class="mb-4">
-          <label class="form-label" for="{{ form.password.id_for_label }}">Contraseña</label>
-          <input class="form-control form-control-lg" type="password" name="{{ form.password.name }}" id="{{ form.password.id_for_label }}" autocomplete="current-password" required>
-        </div>
-        <button class="btn btn-primary btn-lg w-100" type="submit">Ingresar a MotoService</button>
-      </form>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+    <div class="mb-3">
+      <label class="form-label" for="{{ form.username.id_for_label }}">Usuario</label>
+      <input class="form-control form-control-lg" type="text" name="{{ form.username.name }}" id="{{ form.username.id_for_label }}" value="{{ form.username.value|default:'' }}" autocomplete="username" autofocus required>
     </div>
-  </section>
-</div>
+    <div class="mb-4">
+      <label class="form-label" for="{{ form.password.id_for_label }}">Contraseña</label>
+      <input class="form-control form-control-lg" type="password" name="{{ form.password.name }}" id="{{ form.password.id_for_label }}" autocomplete="current-password" required>
+    </div>
+    <button class="btn btn-primary btn-lg w-100" type="submit">Ingresar a MotoService</button>
+  </form>
+  <p class="text-center mt-4 mb-0">
+    <a href="{% url 'password_reset' %}">¿Olvidaste tu contraseña?</a>
+  </p>
 {% endblock %}
