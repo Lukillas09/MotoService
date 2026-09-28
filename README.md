@@ -15,6 +15,7 @@ Cliente → Moto → Servicio → Mantenimiento → Alerta → Contacto
 - PostgreSQL mediante `DATABASE_URL`
 - WhiteNoise y Gunicorn
 - Supabase PostgreSQL y Railway
+- Resend mediante API HTTPS para emails de producción
 - `openpyxl` para la exportación Excel
 
 ## Funcionalidad actual
@@ -123,14 +124,9 @@ CSRF_TRUSTED_ORIGINS=
 DJANGO_SETTINGS_MODULE=config.settings.development
 WHATSAPP_DEFAULT_COUNTRY_CODE=549
 TALLER_NOMBRE=
-EMAIL_HOST=
-EMAIL_PORT=587
-EMAIL_HOST_USER=
-EMAIL_HOST_PASSWORD=
-EMAIL_USE_TLS=True
-EMAIL_USE_SSL=False
 DEFAULT_FROM_EMAIL=
-EMAIL_TIMEOUT=10
+RESEND_API_KEY=
+RESEND_FROM_EMAIL=MotoService <onboarding@resend.dev>
 PASSWORD_RESET_TIMEOUT=86400
 ```
 
@@ -138,7 +134,9 @@ PASSWORD_RESET_TIMEOUT=86400
 
 En desarrollo, `DJANGO_DEBUG` controla el modo de depuración y la entrega de estáticos de `runserver`. Tiene prioridad sobre la variable anterior `DEBUG`, que sigue siendo compatible con valores booleanos. Valores ajenos a Django, como `DEBUG=release` heredado del entorno, utilizan el valor predeterminado de desarrollo (`True`). Producción siempre fuerza `DEBUG=False`.
 
-El desarrollo usa `ConsoleEmailBackend`: al crear una cuenta o solicitar recuperación, el email y su enlace aparecen en la terminal de `runserver` sin contactar un proveedor. Los tests usan el backend en memoria. Producción usa SMTP y requiere configurar sus variables en Railway antes de utilizar invitaciones o recuperación reales. `EMAIL_USE_TLS` y `EMAIL_USE_SSL` no pueden activarse simultáneamente.
+El desarrollo usa `ConsoleEmailBackend`: al crear una cuenta o solicitar recuperación, el email y su enlace aparecen en la terminal de `runserver` sin contactar un proveedor. Los tests usan `locmem.EmailBackend` y nunca hacen requests reales. Producción conserva la API de email de Django y entrega mediante `ResendEmailBackend` y la API HTTPS de Resend.
+
+`RESEND_FROM_EMAIL` es la fuente de verdad del remitente en producción; no está hardcodeado en el backend. `MotoService <onboarding@resend.dev>` sirve para pruebas de Resend. Para enviar normalmente a usuarios reales hay que verificar un dominio propio en Resend y cambiar esa variable, sin modificar código. `DEFAULT_FROM_EMAIL` se mantiene por compatibilidad con Django y los entornos locales.
 
 Para probar localmente con SQLite, dejá `DATABASE_URL` vacío y ejecutá:
 
@@ -177,19 +175,21 @@ El proyecto incluye `Procfile` y `railway.json`. En Railway se deben configurar:
 - `CSRF_TRUSTED_ORIGINS`
 - `WHATSAPP_DEFAULT_COUNTRY_CODE`
 - `TALLER_NOMBRE`
-- `EMAIL_HOST`
-- `EMAIL_PORT`
-- `EMAIL_HOST_USER`
-- `EMAIL_HOST_PASSWORD`
-- `EMAIL_USE_TLS`
-- `EMAIL_USE_SSL`
-- `DEFAULT_FROM_EMAIL`
-- `EMAIL_TIMEOUT`
+- `RESEND_API_KEY`
+- `RESEND_FROM_EMAIL`
 - `PASSWORD_RESET_TIMEOUT`
 
 La configuración de producción fuerza `DEBUG=False`, exige PostgreSQL con SSL, confía en el proxy HTTPS de Railway, redirige a HTTPS y usa cookies seguras. El comando de inicio ejecuta migraciones, `collectstatic` y luego Gunicorn.
 
-Las credenciales SMTP se configuran únicamente como variables del servicio. Nunca deben copiarse al repositorio, README, logs ni templates. Los enlaces de email se construyen desde el request y respetan el proxy HTTPS; no contienen un dominio hardcodeado.
+Railway ya no necesita `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS` ni `EMAIL_USE_SSL`: MotoService no usa SMTP en producción. La API key de Resend se configura únicamente como variable del servicio y nunca debe copiarse al repositorio, logs ni templates. Los enlaces de email se construyen desde el request y respetan el proxy HTTPS; no contienen un dominio hardcodeado.
+
+Después del deploy, una prueba manual controlada puede ejecutarse desde una shell de Railway, reemplazando únicamente el destinatario de ejemplo:
+
+```text
+python manage.py shell -c "from django.core.mail import send_mail; print(send_mail('Prueba MotoService', 'Entrega de prueba mediante Resend HTTPS.', None, ['destinatario@example.com'], fail_silently=False))"
+```
+
+El comando usa las variables ya configuradas en Railway; no hay que escribir ni mostrar la API key.
 
 ## Exportaciones y backups
 

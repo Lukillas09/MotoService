@@ -137,14 +137,9 @@ print(json.dumps({'debug': settings.DEBUG, 'responses': responses}))
                 else "sqlite:///:memory:"
             ),
             ALLOWED_HOSTS="testserver",
-            EMAIL_HOST="smtp.example.test",
-            EMAIL_PORT="2525",
-            EMAIL_HOST_USER="test-user",
-            EMAIL_HOST_PASSWORD="test-password",
-            EMAIL_USE_TLS="True",
-            EMAIL_USE_SSL="False",
             DEFAULT_FROM_EMAIL="MotoService <no-reply@example.test>",
-            EMAIL_TIMEOUT="12",
+            RESEND_API_KEY="test-only-resend-api-key",
+            RESEND_FROM_EMAIL="MotoService <resend@example.test>",
             PASSWORD_RESET_TIMEOUT="86400",
         )
         result = subprocess.run(
@@ -158,12 +153,9 @@ django.setup()
 from django.conf import settings
 print(json.dumps({
     'backend': settings.EMAIL_BACKEND,
-    'host': settings.EMAIL_HOST,
-    'port': settings.EMAIL_PORT,
-    'tls': settings.EMAIL_USE_TLS,
-    'ssl': settings.EMAIL_USE_SSL,
-    'from_email': settings.DEFAULT_FROM_EMAIL,
-    'timeout': settings.EMAIL_TIMEOUT,
+    'default_from_email': settings.DEFAULT_FROM_EMAIL,
+    'resend_from_email': settings.RESEND_FROM_EMAIL,
+    'has_resend_api_key': bool(settings.RESEND_API_KEY),
     'reset_timeout': settings.PASSWORD_RESET_TIMEOUT,
 }))
 """,
@@ -187,49 +179,108 @@ print(json.dumps({
         )
         self.assertEqual(
             produccion["backend"],
-            "django.core.mail.backends.smtp.EmailBackend",
+            "apps.core.email_backends.ResendEmailBackend",
         )
-        self.assertEqual(produccion["host"], "smtp.example.test")
-        self.assertEqual(produccion["port"], 2525)
-        self.assertTrue(produccion["tls"])
-        self.assertFalse(produccion["ssl"])
-        self.assertEqual(produccion["timeout"], 12)
+        self.assertTrue(produccion["has_resend_api_key"])
+        self.assertEqual(
+            produccion["resend_from_email"],
+            "MotoService <resend@example.test>",
+        )
+        self.assertEqual(
+            produccion["default_from_email"],
+            "MotoService <no-reply@example.test>",
+        )
         self.assertEqual(produccion["reset_timeout"], 86400)
 
-    def test_tls_y_ssl_no_pueden_activarse_juntos(self):
-        environment = os.environ.copy()
-        environment.update(
-            DJANGO_SETTINGS_MODULE="config.settings.test",
-            DATABASE_URL="sqlite:///:memory:",
-            EMAIL_USE_TLS="True",
-            EMAIL_USE_SSL="True",
-        )
-        result = subprocess.run(
-            [sys.executable, "-c", "import django; django.setup()"],
-            cwd=Path(settings.BASE_DIR),
-            env=environment,
-            capture_output=True,
-            text=True,
-            timeout=20,
-            check=False,
-        )
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("cannot both be enabled", result.stderr)
+    def test_produccion_exige_configuracion_resend_explicita(self):
+        for variable in ("RESEND_API_KEY", "RESEND_FROM_EMAIL"):
+            with self.subTest(variable=variable):
+                environment = os.environ.copy()
+                environment.update(
+                    DJANGO_SETTINGS_MODULE="config.settings.production",
+                    SECRET_KEY="test-only-secret-key",
+                    DATABASE_URL="postgresql://test:test@localhost:5432/test",
+                    ALLOWED_HOSTS="testserver",
+                    RESEND_API_KEY="test-only-resend-api-key",
+                    RESEND_FROM_EMAIL="MotoService <resend@example.test>",
+                )
+                environment[variable] = ""
+                result = subprocess.run(
+                    [sys.executable, "-c", "import django; django.setup()"],
+                    cwd=Path(settings.BASE_DIR),
+                    env=environment,
+                    capture_output=True,
+                    text=True,
+                    timeout=20,
+                    check=False,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(
+                    f"{variable} must be set in production.",
+                    result.stderr,
+                )
+                self.assertNotIn("test-only-resend-api-key", result.stderr)
+
+    def test_desarrollo_y_tests_no_exigen_configuracion_resend(self):
+        for settings_module, backend in (
+            (
+                "config.settings.development",
+                "django.core.mail.backends.console.EmailBackend",
+            ),
+            (
+                "config.settings.test",
+                "django.core.mail.backends.locmem.EmailBackend",
+            ),
+        ):
+            with self.subTest(settings_module=settings_module):
+                environment = os.environ.copy()
+                environment.update(
+                    DJANGO_SETTINGS_MODULE=settings_module,
+                    DATABASE_URL="sqlite:///:memory:",
+                    RESEND_API_KEY="",
+                    RESEND_FROM_EMAIL="",
+                )
+                result = subprocess.run(
+                    [
+                        sys.executable,
+                        "-c",
+                        (
+                            "import django; django.setup(); "
+                            "from django.conf import settings; "
+                            "print(settings.EMAIL_BACKEND)"
+                        ),
+                    ],
+                    cwd=Path(settings.BASE_DIR),
+                    env=environment,
+                    capture_output=True,
+                    text=True,
+                    timeout=20,
+                    check=True,
+                )
+                self.assertEqual(result.stdout.strip(), backend)
 
     def test_env_example_documenta_email_sin_credenciales(self):
         contenido = (Path(settings.BASE_DIR) / ".env.example").read_text(
             encoding="utf-8"
         )
         for nombre in (
-            "EMAIL_HOST",
-            "EMAIL_PORT",
-            "EMAIL_HOST_USER",
-            "EMAIL_HOST_PASSWORD",
-            "EMAIL_USE_TLS",
-            "EMAIL_USE_SSL",
             "DEFAULT_FROM_EMAIL",
-            "EMAIL_TIMEOUT",
+            "RESEND_API_KEY",
+            "RESEND_FROM_EMAIL",
             "PASSWORD_RESET_TIMEOUT",
         ):
             self.assertIn(f"{nombre}=", contenido)
-        self.assertIn("EMAIL_HOST_PASSWORD=\n", contenido.replace("\r\n", "\n"))
+        self.assertIn("RESEND_API_KEY=\n", contenido.replace("\r\n", "\n"))
+        self.assertIn(
+            "RESEND_FROM_EMAIL=MotoService <onboarding@resend.dev>",
+            contenido,
+        )
+        for nombre_smtp in (
+            "EMAIL_HOST=",
+            "EMAIL_PORT=",
+            "EMAIL_HOST_USER=",
+            "EMAIL_HOST_PASSWORD=",
+            "EMAIL_USE_TLS=",
+            "EMAIL_USE_SSL=",
+        ):
+            self.assertNotIn(nombre_smtp, contenido)

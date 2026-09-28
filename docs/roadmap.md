@@ -38,4 +38,4 @@ Centro de ayuda autenticado con diez categorías, búsqueda local, pasos reutili
 
 ## Mejora post-lanzamiento — Usuarios y recuperación — Implementada
 
-Gestión privada sobre Django Auth sin Custom User Model: roles Propietario/Usuario, alta por invitación, contraseña elegida por cada persona, recuperación por email, Mi cuenta, cambio de contraseña, desactivación/reactivación y protección del último Propietario y de superusers. Incluye SMTP por entorno, respuesta antienumeración, navegación responsive, guía y tests de seguridad. No agrega tablas ni registro público.
+Gestión privada sobre Django Auth sin Custom User Model: roles Propietario/Usuario, alta por invitación, contraseña elegida por cada persona, recuperación por email, Mi cuenta, cambio de contraseña, desactivación/reactivación y protección del último Propietario y de superusers. Incluye backend de email por entorno, Resend vía API HTTPS en producción, respuesta antienumeración, navegación responsive, guía y tests de seguridad. No agrega tablas ni registro público.

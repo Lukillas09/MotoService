@@ -49,23 +49,13 @@ WHATSAPP_DEFAULT_COUNTRY_CODE = os.getenv(
 ).strip()
 TALLER_NOMBRE = os.getenv("TALLER_NOMBRE", "").strip()
 
-EMAIL_HOST = os.getenv("EMAIL_HOST", "").strip()
-EMAIL_PORT = env_int("EMAIL_PORT", 587)
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "").strip()
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
-EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
-EMAIL_USE_SSL = env_bool("EMAIL_USE_SSL", False)
 DEFAULT_FROM_EMAIL = (
     os.getenv("DEFAULT_FROM_EMAIL", "MotoService <noreply@localhost>").strip()
     or "MotoService <noreply@localhost>"
 )
-EMAIL_TIMEOUT = env_int("EMAIL_TIMEOUT", 10)
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "").strip()
+RESEND_FROM_EMAIL = os.getenv("RESEND_FROM_EMAIL", "").strip()
 PASSWORD_RESET_TIMEOUT = env_int("PASSWORD_RESET_TIMEOUT", 86400)
-
-if EMAIL_USE_TLS and EMAIL_USE_SSL:
-    raise ImproperlyConfigured(
-        "EMAIL_USE_TLS and EMAIL_USE_SSL cannot both be enabled."
-    )
 
 INSTALLED_APPS = [
     "django.contrib.admin",

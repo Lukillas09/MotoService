@@ -2,7 +2,7 @@ from .base import *  # noqa: F403
 
 
 DEBUG = False
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_BACKEND = "apps.core.email_backends.ResendEmailBackend"
 
 MIDDLEWARE = [  # noqa: F405
     "django.middleware.security.SecurityMiddleware",
@@ -28,6 +28,12 @@ if not SECRET_KEY or SECRET_KEY == "change-me":
 DATABASE_URL = os.getenv("DATABASE_URL", "")  # noqa: F405
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL must be set in production.")
+
+if not RESEND_API_KEY:  # noqa: F405
+    raise RuntimeError("RESEND_API_KEY must be set in production.")
+
+if not RESEND_FROM_EMAIL:  # noqa: F405
+    raise RuntimeError("RESEND_FROM_EMAIL must be set in production.")
 
 DATABASES = {  # noqa: F405
     "default": dj_database_url.parse(  # noqa: F405
