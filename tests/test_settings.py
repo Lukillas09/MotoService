@@ -284,3 +284,28 @@ print(json.dumps({
             "EMAIL_USE_SSL=",
         ):
             self.assertNotIn(nombre_smtp, contenido)
+
+
+class ProductionDeploymentTests(SimpleTestCase):
+    def test_entrypoints_preparan_django_antes_de_gunicorn(self):
+        base_dir = Path(settings.BASE_DIR)
+        railway_command = json.loads(
+            (base_dir / "railway.json").read_text(encoding="utf-8")
+        )["deploy"]["startCommand"]
+        procfile = (base_dir / "Procfile").read_text(encoding="utf-8").strip()
+
+        self.assertTrue(procfile.startswith("web:"))
+        procfile_command = procfile.removeprefix("web:").strip()
+        self.assertEqual(procfile_command, railway_command)
+        self.assertIn(
+            "collectstatic --noinput --settings=config.settings.production",
+            procfile_command,
+        )
+        self.assertLess(
+            procfile_command.index("manage.py migrate"),
+            procfile_command.index("manage.py collectstatic"),
+        )
+        self.assertLess(
+            procfile_command.index("manage.py collectstatic"),
+            procfile_command.index("gunicorn"),
+        )
