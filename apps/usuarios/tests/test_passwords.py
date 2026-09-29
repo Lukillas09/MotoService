@@ -3,7 +3,7 @@ from unittest.mock import patch
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core import mail
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from .utils import ruta_desde_email
@@ -34,6 +34,59 @@ class RecuperacionContrasenaTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("/accounts/reset/", mail.outbox[0].body)
         self.assertNotIn("Clave-anterior-123", mail.outbox[0].body)
+
+    @override_settings(
+        EMAIL_BACKEND="apps.core.email_backends.ResendEmailBackend",
+        RESEND_FROM_EMAIL="MotoService <onboarding@resend.dev>",
+        DEFAULT_FROM_EMAIL="remitente@example.com",
+        EMAIL_HOST_USER="cuenta-proveedor@example.com",
+    )
+    @patch("apps.core.email_backends.resend.Emails.send")
+    def test_recuperacion_entrega_a_resend_el_email_del_usuario(self, resend_send):
+        self.usuario.email = "usuario@example.com"
+        self.usuario.save(update_fields=("email",))
+        resend_send.return_value = {"id": "email-de-prueba"}
+
+        response = self.solicitar("usuario@example.com")
+
+        self.assertRedirects(response, reverse("password_reset_done"))
+        resend_send.assert_called_once()
+        payload = resend_send.call_args.args[0]
+        self.assertEqual(payload["to"], ["usuario@example.com"])
+        self.assertNotEqual(payload["to"], [settings.DEFAULT_FROM_EMAIL])
+        self.assertNotEqual(payload["to"], [settings.EMAIL_HOST_USER])
+
+    @override_settings(
+        EMAIL_BACKEND="apps.core.email_backends.ResendEmailBackend",
+        RESEND_FROM_EMAIL="MotoService <onboarding@resend.dev>",
+    )
+    @patch("apps.core.email_backends.resend.Emails.send")
+    def test_fallo_resend_registra_metadatos_seguros(self, resend_send):
+        class ErrorProveedorPrueba(Exception):
+            error_type = "validation_error"
+            code = 403
+
+        resend_send.side_effect = ErrorProveedorPrueba(
+            "Detalle privado usuario-secreto@example.com token-secreto"
+        )
+
+        with self.assertLogs("apps.core.email_backends", level="WARNING") as logs:
+            with self.assertLogs("django.contrib.auth", level="ERROR") as auth_logs:
+                response = self.solicitar("lucia@example.com", follow=True)
+
+        registro = logs.output[0]
+        error_registrado = auth_logs.records[0].exc_info[1]
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Si existe una cuenta asociada")
+        self.assertIn("exception=ErrorProveedorPrueba", registro)
+        self.assertIn("error_type=validation_error", registro)
+        self.assertIn("code=403", registro)
+        self.assertNotIn("usuario-secreto@example.com", registro)
+        self.assertNotIn("token-secreto", registro)
+        self.assertEqual(type(error_registrado).__name__, "ResendEmailDeliveryError")
+        self.assertTrue(error_registrado.__suppress_context__)
+        self.assertNotIn("usuario-secreto@example.com", str(error_registrado))
+        self.assertNotIn("token-secreto", str(error_registrado))
 
     def test_email_inexistente_e_inactivo_muestran_respuesta_equivalente(self):
         contenido_existente = self.solicitar("lucia@example.com", follow=True).content

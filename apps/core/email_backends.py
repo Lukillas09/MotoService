@@ -1,4 +1,5 @@
 import logging
+import re
 
 import resend
 from django.conf import settings
@@ -6,6 +7,7 @@ from django.core.mail.backends.base import BaseEmailBackend
 
 
 logger = logging.getLogger(__name__)
+SAFE_ERROR_METADATA = re.compile(r"^[A-Za-z0-9_.:-]{1,64}$")
 
 # The official Python SDK exposes process-wide configuration. MotoService uses
 # one fixed API key per process, so configure it once when this backend loads.
@@ -38,23 +40,40 @@ class ResendEmailBackend(BaseEmailBackend):
                 payload = self._build_payload(message)
                 resend.Emails.send(payload)
             except Exception as error:
+                if isinstance(
+                    error,
+                    (NotImplementedError, ResendEmailMessageError),
+                ) and not self.fail_silently:
+                    raise
+
+                self._log_delivery_error(error)
                 if not self.fail_silently:
-                    if isinstance(
-                        error,
-                        (NotImplementedError, ResendEmailMessageError),
-                    ):
-                        raise
                     raise ResendEmailDeliveryError(
                         "Email delivery through Resend failed."
                     ) from None
-                logger.warning(
-                    "Resend email delivery failed (%s).",
-                    type(error).__name__,
-                )
             else:
                 sent_count += 1
 
         return sent_count
+
+    @staticmethod
+    def _log_delivery_error(error):
+        logger.warning(
+            "Resend email delivery failed "
+            "(exception=%s, error_type=%s, code=%s).",
+            ResendEmailBackend._safe_error_metadata(type(error).__name__),
+            ResendEmailBackend._safe_error_metadata(
+                getattr(error, "error_type", None)
+            ),
+            ResendEmailBackend._safe_error_metadata(getattr(error, "code", None)),
+        )
+
+    @staticmethod
+    def _safe_error_metadata(value):
+        text = str(value) if value is not None else "unknown"
+        if not SAFE_ERROR_METADATA.fullmatch(text):
+            return "unknown"
+        return text
 
     @staticmethod
     def _build_payload(message):
