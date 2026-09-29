@@ -138,8 +138,9 @@ print(json.dumps({'debug': settings.DEBUG, 'responses': responses}))
             ),
             ALLOWED_HOSTS="testserver",
             DEFAULT_FROM_EMAIL="MotoService <no-reply@example.test>",
-            RESEND_API_KEY="test-only-resend-api-key",
-            RESEND_FROM_EMAIL="MotoService <resend@example.test>",
+            BREVO_API_KEY="test-only-brevo-api-key",
+            BREVO_FROM_EMAIL="brevo@example.test",
+            BREVO_FROM_NAME="MotoService",
             PASSWORD_RESET_TIMEOUT="86400",
         )
         result = subprocess.run(
@@ -154,8 +155,9 @@ from django.conf import settings
 print(json.dumps({
     'backend': settings.EMAIL_BACKEND,
     'default_from_email': settings.DEFAULT_FROM_EMAIL,
-    'resend_from_email': settings.RESEND_FROM_EMAIL,
-    'has_resend_api_key': bool(settings.RESEND_API_KEY),
+    'brevo_from_email': settings.BREVO_FROM_EMAIL,
+    'brevo_from_name': settings.BREVO_FROM_NAME,
+    'has_brevo_api_key': bool(settings.BREVO_API_KEY),
     'reset_timeout': settings.PASSWORD_RESET_TIMEOUT,
 }))
 """,
@@ -179,21 +181,26 @@ print(json.dumps({
         )
         self.assertEqual(
             produccion["backend"],
-            "apps.core.email_backends.ResendEmailBackend",
+            "apps.core.email_backends.BrevoEmailBackend",
         )
-        self.assertTrue(produccion["has_resend_api_key"])
+        self.assertTrue(produccion["has_brevo_api_key"])
         self.assertEqual(
-            produccion["resend_from_email"],
-            "MotoService <resend@example.test>",
+            produccion["brevo_from_email"],
+            "brevo@example.test",
         )
+        self.assertEqual(produccion["brevo_from_name"], "MotoService")
         self.assertEqual(
             produccion["default_from_email"],
             "MotoService <no-reply@example.test>",
         )
         self.assertEqual(produccion["reset_timeout"], 86400)
 
-    def test_produccion_exige_configuracion_resend_explicita(self):
-        for variable in ("RESEND_API_KEY", "RESEND_FROM_EMAIL"):
+    def test_produccion_exige_configuracion_brevo_explicita(self):
+        for variable in (
+            "BREVO_API_KEY",
+            "BREVO_FROM_EMAIL",
+            "BREVO_FROM_NAME",
+        ):
             with self.subTest(variable=variable):
                 environment = os.environ.copy()
                 environment.update(
@@ -201,8 +208,9 @@ print(json.dumps({
                     SECRET_KEY="test-only-secret-key",
                     DATABASE_URL="postgresql://test:test@localhost:5432/test",
                     ALLOWED_HOSTS="testserver",
-                    RESEND_API_KEY="test-only-resend-api-key",
-                    RESEND_FROM_EMAIL="MotoService <resend@example.test>",
+                    BREVO_API_KEY="test-only-brevo-api-key",
+                    BREVO_FROM_EMAIL="brevo@example.test",
+                    BREVO_FROM_NAME="MotoService",
                 )
                 environment[variable] = ""
                 result = subprocess.run(
@@ -219,9 +227,9 @@ print(json.dumps({
                     f"{variable} must be set in production.",
                     result.stderr,
                 )
-                self.assertNotIn("test-only-resend-api-key", result.stderr)
+                self.assertNotIn("test-only-brevo-api-key", result.stderr)
 
-    def test_desarrollo_y_tests_no_exigen_configuracion_resend(self):
+    def test_desarrollo_y_tests_no_exigen_configuracion_brevo(self):
         for settings_module, backend in (
             (
                 "config.settings.development",
@@ -237,8 +245,9 @@ print(json.dumps({
                 environment.update(
                     DJANGO_SETTINGS_MODULE=settings_module,
                     DATABASE_URL="sqlite:///:memory:",
-                    RESEND_API_KEY="",
-                    RESEND_FROM_EMAIL="",
+                    BREVO_API_KEY="",
+                    BREVO_FROM_EMAIL="",
+                    BREVO_FROM_NAME="",
                 )
                 result = subprocess.run(
                     [
@@ -265,16 +274,18 @@ print(json.dumps({
         )
         for nombre in (
             "DEFAULT_FROM_EMAIL",
-            "RESEND_API_KEY",
-            "RESEND_FROM_EMAIL",
+            "BREVO_API_KEY",
+            "BREVO_FROM_EMAIL",
+            "BREVO_FROM_NAME",
             "PASSWORD_RESET_TIMEOUT",
         ):
             self.assertIn(f"{nombre}=", contenido)
-        self.assertIn("RESEND_API_KEY=\n", contenido.replace("\r\n", "\n"))
+        self.assertIn("BREVO_API_KEY=\n", contenido.replace("\r\n", "\n"))
         self.assertIn(
-            "RESEND_FROM_EMAIL=MotoService <onboarding@resend.dev>",
+            "BREVO_FROM_EMAIL=servicemoto09@gmail.com",
             contenido,
         )
+        self.assertIn("BREVO_FROM_NAME=MotoService", contenido)
         for nombre_smtp in (
             "EMAIL_HOST=",
             "EMAIL_PORT=",

@@ -53,8 +53,9 @@ DEFAULT_FROM_EMAIL = (
     os.getenv("DEFAULT_FROM_EMAIL", "MotoService <noreply@localhost>").strip()
     or "MotoService <noreply@localhost>"
 )
-RESEND_API_KEY = os.getenv("RESEND_API_KEY", "").strip()
-RESEND_FROM_EMAIL = os.getenv("RESEND_FROM_EMAIL", "").strip()
+BREVO_API_KEY = os.getenv("BREVO_API_KEY", "").strip()
+BREVO_FROM_EMAIL = os.getenv("BREVO_FROM_EMAIL", "").strip()
+BREVO_FROM_NAME = os.getenv("BREVO_FROM_NAME", "").strip()
 PASSWORD_RESET_TIMEOUT = env_int("PASSWORD_RESET_TIMEOUT", 86400)
 
 INSTALLED_APPS = [

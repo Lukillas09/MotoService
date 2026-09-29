@@ -15,7 +15,7 @@ Cliente → Moto → Servicio → Mantenimiento → Alerta → Contacto
 - PostgreSQL mediante `DATABASE_URL`
 - WhiteNoise y Gunicorn
 - Supabase PostgreSQL y Railway
-- Resend mediante API HTTPS para emails de producción
+- Brevo mediante su SDK oficial y API HTTPS para emails de producción
 - `openpyxl` para la exportación Excel
 
 ## Funcionalidad actual
@@ -125,8 +125,9 @@ DJANGO_SETTINGS_MODULE=config.settings.development
 WHATSAPP_DEFAULT_COUNTRY_CODE=549
 TALLER_NOMBRE=
 DEFAULT_FROM_EMAIL=
-RESEND_API_KEY=
-RESEND_FROM_EMAIL=MotoService <onboarding@resend.dev>
+BREVO_API_KEY=
+BREVO_FROM_EMAIL=servicemoto09@gmail.com
+BREVO_FROM_NAME=MotoService
 PASSWORD_RESET_TIMEOUT=86400
 ```
 
@@ -134,9 +135,11 @@ PASSWORD_RESET_TIMEOUT=86400
 
 En desarrollo, `DJANGO_DEBUG` controla el modo de depuración y la entrega de estáticos de `runserver`. Tiene prioridad sobre la variable anterior `DEBUG`, que sigue siendo compatible con valores booleanos. Valores ajenos a Django, como `DEBUG=release` heredado del entorno, utilizan el valor predeterminado de desarrollo (`True`). Producción siempre fuerza `DEBUG=False`.
 
-El desarrollo usa `ConsoleEmailBackend`: al crear una cuenta o solicitar recuperación, el email y su enlace aparecen en la terminal de `runserver` sin contactar un proveedor. Los tests usan `locmem.EmailBackend` y nunca hacen requests reales. Producción conserva la API de email de Django y entrega mediante `ResendEmailBackend` y la API HTTPS de Resend.
+El desarrollo usa `ConsoleEmailBackend`: al crear una cuenta o solicitar recuperación, el email y su enlace aparecen en la terminal de `runserver` sin contactar un proveedor. Los tests usan `locmem.EmailBackend` y nunca hacen requests reales. Producción conserva la API de email de Django y entrega mediante `BrevoEmailBackend`, el SDK oficial `brevo-python` y la API HTTPS de Brevo. No se usa SMTP.
 
-`RESEND_FROM_EMAIL` es la fuente de verdad del remitente en producción; no está hardcodeado en el backend. `MotoService <onboarding@resend.dev>` sirve para pruebas de Resend. Para enviar normalmente a usuarios reales hay que verificar un dominio propio en Resend y cambiar esa variable, sin modificar código. `DEFAULT_FROM_EMAIL` se mantiene por compatibilidad con Django y los entornos locales.
+`BREVO_FROM_EMAIL` y `BREVO_FROM_NAME` son la fuente de verdad del remitente en producción; no están hardcodeados en el backend. La configuración prevista usa el remitente verificado `MotoService <servicemoto09@gmail.com>`. `BREVO_API_KEY` es un secreto y debe existir sólo en el entorno de ejecución. `DEFAULT_FROM_EMAIL` se mantiene por compatibilidad con la API de Django y los entornos locales.
+
+El backend requiere al menos un destinatario principal en `to`, porque la operación usada de Brevo no representa un envío dirigido sólo a `cc`/`bcc`. Brevo admite un único `reply-to`, por lo que el backend rechaza explícitamente mensajes Django con más de uno. Los adjuntos todavía no se usan en MotoService y también se rechazan de forma explícita; nunca se descarta silenciosamente información del mensaje.
 
 Para probar localmente con SQLite, dejá `DATABASE_URL` vacío y ejecutá:
 
@@ -175,18 +178,19 @@ El proyecto incluye `Procfile` y `railway.json`. En Railway se deben configurar:
 - `CSRF_TRUSTED_ORIGINS`
 - `WHATSAPP_DEFAULT_COUNTRY_CODE`
 - `TALLER_NOMBRE`
-- `RESEND_API_KEY`
-- `RESEND_FROM_EMAIL`
+- `BREVO_API_KEY`
+- `BREVO_FROM_EMAIL=servicemoto09@gmail.com`
+- `BREVO_FROM_NAME=MotoService`
 - `PASSWORD_RESET_TIMEOUT`
 
 La configuración de producción fuerza `DEBUG=False`, exige PostgreSQL con SSL, confía en el proxy HTTPS de Railway, redirige a HTTPS y usa cookies seguras. El comando de inicio ejecuta migraciones, `collectstatic` y luego Gunicorn.
 
-Railway ya no necesita `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS` ni `EMAIL_USE_SSL`: MotoService no usa SMTP en producción. La API key de Resend se configura únicamente como variable del servicio y nunca debe copiarse al repositorio, logs ni templates. Los enlaces de email se construyen desde el request y respetan el proxy HTTPS; no contienen un dominio hardcodeado.
+Railway no necesita `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS` ni `EMAIL_USE_SSL`: MotoService usa la API HTTPS de Brevo y no SMTP en producción. `BREVO_API_KEY` se configura únicamente como variable del servicio y nunca debe copiarse al repositorio, logs ni templates. Los enlaces de email se construyen desde el request y respetan el proxy HTTPS; no contienen un dominio hardcodeado.
 
 Después del deploy, una prueba manual controlada puede ejecutarse desde una shell de Railway, reemplazando únicamente el destinatario de ejemplo:
 
 ```text
-python manage.py shell -c "from django.core.mail import send_mail; print(send_mail('Prueba MotoService', 'Entrega de prueba mediante Resend HTTPS.', None, ['destinatario@example.com'], fail_silently=False))"
+python manage.py shell -c "from django.core.mail import send_mail; print(send_mail('Prueba MotoService', 'Entrega de prueba mediante Brevo HTTPS.', None, ['destinatario@example.com'], fail_silently=False))"
 ```
 
 El comando usa las variables ya configuradas en Railway; no hay que escribir ni mostrar la API key.

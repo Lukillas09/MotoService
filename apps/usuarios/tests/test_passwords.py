@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.conf import settings
@@ -36,37 +37,56 @@ class RecuperacionContrasenaTests(TestCase):
         self.assertNotIn("Clave-anterior-123", mail.outbox[0].body)
 
     @override_settings(
-        EMAIL_BACKEND="apps.core.email_backends.ResendEmailBackend",
-        RESEND_FROM_EMAIL="MotoService <onboarding@resend.dev>",
+        EMAIL_BACKEND="apps.core.email_backends.BrevoEmailBackend",
+        BREVO_API_KEY="test-only-brevo-api-key",
+        BREVO_FROM_EMAIL="brevo-sender@example.com",
+        BREVO_FROM_NAME="MotoService",
         DEFAULT_FROM_EMAIL="remitente@example.com",
         EMAIL_HOST_USER="cuenta-proveedor@example.com",
     )
-    @patch("apps.core.email_backends.resend.Emails.send")
-    def test_recuperacion_entrega_a_resend_el_email_del_usuario(self, resend_send):
+    @patch("apps.core.email_backends.Brevo")
+    def test_recuperacion_entrega_a_brevo_el_email_del_usuario(self, brevo_class):
         self.usuario.email = "usuario@example.com"
         self.usuario.save(update_fields=("email",))
-        resend_send.return_value = {"id": "email-de-prueba"}
+        brevo_send = (
+            brevo_class.return_value.transactional_emails.send_transac_email
+        )
+        brevo_send.return_value = SimpleNamespace(message_id="email-de-prueba")
 
         response = self.solicitar("usuario@example.com")
 
         self.assertRedirects(response, reverse("password_reset_done"))
-        resend_send.assert_called_once()
-        payload = resend_send.call_args.args[0]
-        self.assertEqual(payload["to"], ["usuario@example.com"])
-        self.assertNotEqual(payload["to"], [settings.DEFAULT_FROM_EMAIL])
-        self.assertNotEqual(payload["to"], [settings.EMAIL_HOST_USER])
+        brevo_send.assert_called_once()
+        payload = brevo_send.call_args.kwargs
+        destinatarios = [recipient.email for recipient in payload["to"]]
+        self.assertEqual(destinatarios, ["usuario@example.com"])
+        self.assertNotIn(settings.BREVO_FROM_EMAIL, destinatarios)
+        self.assertNotIn(settings.DEFAULT_FROM_EMAIL, destinatarios)
+        self.assertNotIn(settings.EMAIL_HOST_USER, destinatarios)
+        self.assertEqual(payload["sender"].email, settings.BREVO_FROM_EMAIL)
+        self.assertEqual(payload["sender"].name, settings.BREVO_FROM_NAME)
+        self.assertIn("/accounts/reset/", payload["text_content"])
+        self.assertIn("/accounts/reset/", payload["html_content"])
 
     @override_settings(
-        EMAIL_BACKEND="apps.core.email_backends.ResendEmailBackend",
-        RESEND_FROM_EMAIL="MotoService <onboarding@resend.dev>",
+        EMAIL_BACKEND="apps.core.email_backends.BrevoEmailBackend",
+        BREVO_API_KEY="test-only-brevo-api-key",
+        BREVO_FROM_EMAIL="brevo-sender@example.com",
+        BREVO_FROM_NAME="MotoService",
     )
-    @patch("apps.core.email_backends.resend.Emails.send")
-    def test_fallo_resend_registra_metadatos_seguros(self, resend_send):
+    @patch("apps.core.email_backends.Brevo")
+    def test_fallo_brevo_registra_metadatos_seguros(self, brevo_class):
         class ErrorProveedorPrueba(Exception):
-            error_type = "validation_error"
-            code = 403
+            status_code = 403
+            body = {
+                "code": "validation_error",
+                "message": "Detalle privado usuario-secreto@example.com token-secreto",
+            }
 
-        resend_send.side_effect = ErrorProveedorPrueba(
+        brevo_send = (
+            brevo_class.return_value.transactional_emails.send_transac_email
+        )
+        brevo_send.side_effect = ErrorProveedorPrueba(
             "Detalle privado usuario-secreto@example.com token-secreto"
         )
 
@@ -78,12 +98,15 @@ class RecuperacionContrasenaTests(TestCase):
         error_registrado = auth_logs.records[0].exc_info[1]
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Si existe una cuenta asociada")
-        self.assertIn("exception=ErrorProveedorPrueba", registro)
-        self.assertIn("error_type=validation_error", registro)
-        self.assertIn("code=403", registro)
+        self.assertIn("provider=brevo", registro)
+        self.assertIn("error_class=ErrorProveedorPrueba", registro)
+        self.assertIn("status_code=403", registro)
+        self.assertIn("provider_code=validation_error", registro)
         self.assertNotIn("usuario-secreto@example.com", registro)
         self.assertNotIn("token-secreto", registro)
-        self.assertEqual(type(error_registrado).__name__, "ResendEmailDeliveryError")
+        self.assertEqual(type(error_registrado).__name__, "BrevoEmailDeliveryError")
+        self.assertEqual(error_registrado.status_code, "403")
+        self.assertEqual(error_registrado.provider_code, "validation_error")
         self.assertTrue(error_registrado.__suppress_context__)
         self.assertNotIn("usuario-secreto@example.com", str(error_registrado))
         self.assertNotIn("token-secreto", str(error_registrado))

@@ -1,9 +1,11 @@
+from types import SimpleNamespace
 from unittest.mock import patch
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core import mail
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from apps.clientes.models import Cliente
@@ -60,6 +62,47 @@ class GestionUsuariosTests(TestCase):
         self.assertIn("Tu acceso a MotoService", mail.outbox[0].subject)
         self.assertIn("/accounts/reset/", mail.outbox[0].body)
         self.assertNotIn("Clave-segura-123", mail.outbox[0].body)
+
+    @override_settings(
+        EMAIL_BACKEND="apps.core.email_backends.BrevoEmailBackend",
+        BREVO_API_KEY="test-only-brevo-api-key",
+        BREVO_FROM_EMAIL="brevo-sender@example.com",
+        BREVO_FROM_NAME="MotoService",
+        DEFAULT_FROM_EMAIL="remitente-django@example.com",
+        EMAIL_HOST_USER="cuenta-proveedor@example.com",
+    )
+    @patch("apps.core.email_backends.Brevo")
+    def test_invitacion_usa_emailmultialternatives_y_destinatario_real(
+        self,
+        brevo_class,
+    ):
+        brevo_send = (
+            brevo_class.return_value.transactional_emails.send_transac_email
+        )
+        brevo_send.return_value = SimpleNamespace(
+            message_id="brevo-invitacion-test"
+        )
+
+        response = self.crear_desde_vista(email="invitado@example.com")
+
+        self.assertRedirects(response, reverse("usuarios:list"))
+        usuario = get_user_model().objects.get(username="juan")
+        self.assertEqual(usuario.email, "invitado@example.com")
+        self.assertFalse(usuario.has_usable_password())
+        brevo_send.assert_called_once()
+        payload = brevo_send.call_args.kwargs
+        destinatarios = [recipient.email for recipient in payload["to"]]
+        self.assertEqual(destinatarios, ["invitado@example.com"])
+        self.assertNotIn(settings.BREVO_FROM_EMAIL, destinatarios)
+        self.assertNotIn(settings.DEFAULT_FROM_EMAIL, destinatarios)
+        self.assertNotIn(settings.EMAIL_HOST_USER, destinatarios)
+        self.assertEqual(payload["sender"].email, settings.BREVO_FROM_EMAIL)
+        self.assertEqual(payload["sender"].name, settings.BREVO_FROM_NAME)
+        self.assertIn("Tu acceso a MotoService", payload["subject"])
+        self.assertIn("/accounts/reset/", payload["text_content"])
+        self.assertIn("/accounts/reset/", payload["html_content"])
+        self.assertNotIn("Clave-segura-123", payload["text_content"])
+        self.assertNotIn("Clave-segura-123", payload["html_content"])
 
     def test_crear_propietario_garantiza_group_sin_cambiar_staff(self):
         superuser = get_user_model().objects.create_superuser(

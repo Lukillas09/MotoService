@@ -2,7 +2,7 @@ from .base import *  # noqa: F403
 
 
 DEBUG = False
-EMAIL_BACKEND = "apps.core.email_backends.ResendEmailBackend"
+EMAIL_BACKEND = "apps.core.email_backends.BrevoEmailBackend"
 
 MIDDLEWARE = [  # noqa: F405
     "django.middleware.security.SecurityMiddleware",
@@ -29,11 +29,14 @@ DATABASE_URL = os.getenv("DATABASE_URL", "")  # noqa: F405
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL must be set in production.")
 
-if not RESEND_API_KEY:  # noqa: F405
-    raise RuntimeError("RESEND_API_KEY must be set in production.")
+if not BREVO_API_KEY:  # noqa: F405
+    raise RuntimeError("BREVO_API_KEY must be set in production.")
 
-if not RESEND_FROM_EMAIL:  # noqa: F405
-    raise RuntimeError("RESEND_FROM_EMAIL must be set in production.")
+if not BREVO_FROM_EMAIL:  # noqa: F405
+    raise RuntimeError("BREVO_FROM_EMAIL must be set in production.")
+
+if not BREVO_FROM_NAME:  # noqa: F405
+    raise RuntimeError("BREVO_FROM_NAME must be set in production.")
 
 DATABASES = {  # noqa: F405
     "default": dj_database_url.parse(  # noqa: F405
