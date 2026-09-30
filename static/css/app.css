@@ -49,9 +49,11 @@ html {
 }
 
 body {
+  display: flex;
   min-height: 100vh;
   margin: 0;
   overflow-x: hidden;
+  flex-direction: column;
   color: var(--color-text);
   background:
     radial-gradient(circle at 92% 4%, rgba(7, 94, 229, 0.055), transparent 24rem),
@@ -305,8 +307,9 @@ textarea {
 }
 
 .app-main {
-  min-height: 100vh;
+  min-height: 0;
   margin-left: var(--sidebar-width);
+  flex: 1 0 auto;
 }
 
 .app-topbar {
@@ -443,7 +446,7 @@ textarea {
 .app-content {
   width: 100%;
   max-width: 94rem;
-  min-height: calc(100vh - var(--topbar-height));
+  min-height: 0;
   margin: 0 auto;
   padding: 1.65rem clamp(1rem, 2.2vw, 2rem) 3rem;
 }
@@ -1900,12 +1903,14 @@ legend {
 }
 
 .app-version {
-  position: fixed;
-  z-index: 1010;
-  right: calc(0.75rem + env(safe-area-inset-right));
-  bottom: calc(0.75rem + env(safe-area-inset-bottom));
-  max-width: calc(100vw - 1.5rem);
+  max-width: calc(100% - 1.5rem);
+  margin:
+    0.75rem
+    calc(0.75rem + env(safe-area-inset-right))
+    calc(0.75rem + env(safe-area-inset-bottom))
+    0.75rem;
   padding: 0.25rem 0.55rem;
+  align-self: flex-end;
   overflow: hidden;
   color: #526985;
   background: rgba(255, 255, 255, 0.88);
@@ -1922,14 +1927,16 @@ legend {
 }
 
 .public-content {
-  min-height: 100vh;
+  display: grid;
+  width: 100%;
+  min-height: 0;
+  flex: 1 0 auto;
+  place-items: center;
 }
 
 .login-page {
-  display: grid;
   min-height: 100vh;
   padding: 1.25rem;
-  place-items: center;
   background:
     radial-gradient(circle at 15% 10%, rgba(7, 94, 229, 0.16), transparent 23rem),
     radial-gradient(circle at 90% 85%, rgba(14, 165, 233, 0.12), transparent 25rem),
@@ -2099,7 +2106,7 @@ legend {
   }
 
   body.app-authenticated .app-version {
-    bottom: calc(4.85rem + env(safe-area-inset-bottom));
+    margin-bottom: 0.75rem;
   }
 
   .desktop-sidebar,
@@ -2134,7 +2141,6 @@ legend {
   }
 
   .app-content {
-    min-height: calc(100vh - var(--topbar-height));
     padding: 1rem 1rem 2rem;
   }
 

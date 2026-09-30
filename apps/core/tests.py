@@ -1,4 +1,5 @@
 import json
+import re
 from urllib.parse import parse_qs, urlparse
 
 from django.conf import settings
@@ -24,7 +25,7 @@ from .context_processors import app_version
 
 class VersionConfigurationTests(SimpleTestCase):
     def test_app_version_oficial(self):
-        self.assertEqual(APP_VERSION, "1.0.0")
+        self.assertEqual(APP_VERSION, "1.0.1")
 
     def test_context_processor_expone_version(self):
         request = RequestFactory().get("/")
@@ -46,17 +47,21 @@ class VersionRenderingTests(TestCase):
         response = self.client.get(reverse("core:dashboard"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "MotoService · v1.0.0")
+        self.assertContains(response, "MotoService · v1.0.1", count=1)
+        self.assertContains(response, 'class="app-version"', count=1)
         self.assertContains(
             response,
-            'aria-label="Versión de MotoService 1.0.0"',
+            'aria-label="Versión de MotoService 1.0.1"',
         )
 
     def test_login_publico_muestra_version(self):
         response = self.client.get(reverse("login"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "MotoService · v1.0.0")
+        self.assertContains(response, "MotoService · v1.0.1", count=1)
+        self.assertContains(response, 'class="app-version"', count=1)
+        self.assertContains(response, 'class="app-public')
+        self.assertNotContains(response, 'class="mobile-bottom-nav"')
 
 
 class DashboardTests(TestCase):
@@ -461,6 +466,74 @@ class ProductionReadinessTests(TestCase):
         self.assertIn("--radius-lg", css)
         self.assertIn("--shadow-md", css)
         self.assertIn("@media (prefers-reduced-motion: reduce)", css)
+
+    def test_badge_de_version_permanece_en_el_flujo_del_layout(self):
+        css = (settings.BASE_DIR / "static" / "css" / "app.css").read_text(
+            encoding="utf-8"
+        )
+        reglas_version = [
+            coincidencia.group("declaraciones")
+            for coincidencia in re.finditer(
+                r"(?P<selectores>[^{}]+)\{(?P<declaraciones>[^{}]*)\}",
+                css,
+            )
+            if re.search(
+                r"(?<![\w-])\.app-version(?![\w-])",
+                coincidencia.group("selectores"),
+            )
+        ]
+
+        self.assertTrue(reglas_version)
+        self.assertRegex(
+            "\n".join(reglas_version),
+            r"(?i)\balign-self\s*:\s*flex-end\b",
+        )
+        for declaraciones in reglas_version:
+            with self.subTest(declaraciones=declaraciones.strip()):
+                self.assertNotRegex(
+                    declaraciones,
+                    r"(?i)\bposition\s*:\s*(?:absolute|fixed|sticky|-webkit-sticky)\b",
+                )
+
+        cuerpo = re.search(r"(?m)^body\s*\{(?P<declaraciones>[^}]*)\}", css)
+        app_main = re.search(r"(?m)^\.app-main\s*\{(?P<declaraciones>[^}]*)\}", css)
+        contenido_publico = re.search(
+            r"(?m)^\.public-content\s*\{(?P<declaraciones>[^}]*)\}", css
+        )
+        self.assertIsNotNone(cuerpo)
+        self.assertIsNotNone(app_main)
+        self.assertIsNotNone(contenido_publico)
+        self.assertRegex(cuerpo.group("declaraciones"), r"\bdisplay\s*:\s*flex\b")
+        self.assertRegex(
+            cuerpo.group("declaraciones"), r"\bflex-direction\s*:\s*column\b"
+        )
+        for contenedor in (app_main, contenido_publico):
+            self.assertRegex(
+                contenedor.group("declaraciones"),
+                r"\bflex\s*:\s*1\s+0\s+auto\b",
+            )
+
+        inicio_mobile = css.index("@media (max-width: 991.98px)")
+        fin_mobile = css.index("@media (max-width: 767.98px)", inicio_mobile)
+        css_mobile = css[inicio_mobile:fin_mobile]
+        reserva = re.search(
+            r"body\.app-authenticated\s*\{[^}]*padding-bottom:\s*"
+            r"calc\(\s*(?P<rem>[\d.]+)rem\s*\+\s*"
+            r"env\(safe-area-inset-bottom\)\s*\)",
+            css_mobile,
+        )
+        navegacion = re.search(
+            r"\.mobile-bottom-nav\s*\{[^}]*height:\s*"
+            r"calc\(\s*(?P<rem>[\d.]+)rem\s*\+\s*"
+            r"env\(safe-area-inset-bottom\)\s*\)",
+            css_mobile,
+        )
+        self.assertIsNotNone(reserva)
+        self.assertIsNotNone(navegacion)
+        self.assertGreaterEqual(
+            float(reserva.group("rem")),
+            float(navegacion.group("rem")),
+        )
 
     def test_paginas_de_error_no_exponen_detalles_tecnicos(self):
         request = RequestFactory().get("/ruta-inexistente/")
