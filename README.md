@@ -1,4 +1,4 @@
-# gestor-taller-motos
+# MotoService
 
 Aplicación web para la gestión cotidiana de un taller de motos. Usa un monolito Django modular, responsive e instalable como PWA, con PostgreSQL como base oficial y Supabase PostgreSQL en producción.
 
