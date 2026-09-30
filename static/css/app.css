@@ -1899,6 +1899,28 @@ legend {
   opacity: 1;
 }
 
+.app-version {
+  position: fixed;
+  z-index: 1010;
+  right: calc(0.75rem + env(safe-area-inset-right));
+  bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  max-width: calc(100vw - 1.5rem);
+  padding: 0.25rem 0.55rem;
+  overflow: hidden;
+  color: #526985;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(201, 215, 232, 0.9);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.015em;
+  line-height: 1.2;
+  pointer-events: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  backdrop-filter: blur(6px);
+}
+
 .public-content {
   min-height: 100vh;
 }
@@ -2074,6 +2096,10 @@ legend {
 
   body.app-authenticated {
     padding-bottom: calc(4.7rem + env(safe-area-inset-bottom));
+  }
+
+  body.app-authenticated .app-version {
+    bottom: calc(4.85rem + env(safe-area-inset-bottom));
   }
 
   .desktop-sidebar,

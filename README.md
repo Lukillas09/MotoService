@@ -8,6 +8,12 @@ Las fases 1 a 6 cubren el flujo operativo principal y su interfaz final:
 Cliente → Moto → Servicio → Mantenimiento → Alerta → Contacto
 ```
 
+## Versión
+
+Versión actual: **v1.0.0**.
+
+`config/version.py` es la fuente de verdad de la versión de la aplicación. Los tags Git y releases deben coincidir con el valor definido en ese archivo, usando el prefijo `v`.
+
 ## Tecnologías
 
 - Python y Django 5

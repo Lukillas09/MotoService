@@ -20,6 +20,8 @@ La configuración de producción exige `SECRET_KEY` y `DATABASE_URL`, mantiene `
 
 WhiteNoise sirve los estáticos generados por `collectstatic` con el backend comprimido y con manifiesto configurado mediante `STORAGES`. El service worker se publica desde la raíz requerida por su alcance, pero sólo intercepta solicitudes GET bajo `/static/`; las páginas autenticadas y los datos privados no se almacenan en caché. HSTS se habilitará al cerrar el despliegue, después de confirmar el dominio y HTTPS de extremo a extremo.
 
+La versión oficial de la aplicación se define explícitamente en `config/version.py` y llega a los templates mediante un context processor de `core`. No depende de Git ni del filesystem del contenedor, y los tags publicados deben coincidir con esa fuente de verdad.
+
 La arquitectura evita Redis, Celery, servicios adicionales y frontend separado mientras no exista una necesidad concreta. Esto reduce costos, complejidad operativa y mantenimiento.
 
 Las vistas privadas usan Django Auth. Los listados y filtros conservan un fallback HTTP normal y HTMX se limita a reemplazar resultados o mostrar el contexto de la moto seleccionada.

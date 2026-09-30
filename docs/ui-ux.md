@@ -45,4 +45,4 @@ Mi cuenta reutiliza el shell privado y agrupa identidad, rol, perfil y cambio de
 
 ## PWA y privacidad
 
-El manifest ofrece iconos PNG de 192 y 512 px, variantes maskable en ambos tamaños y Apple Touch Icon. El service worker `motoservice-static-v12` precarga únicamente CSS, JavaScript, manifest e imágenes propias. Sólo responde desde caché a rutas bajo `/static/`; las páginas autenticadas y los datos privados, incluidas `/guia/`, `/usuarios/`, `/cuenta/` y las vistas de recuperación, siempre dependen de la red y del control de acceso de Django.
+El manifest ofrece iconos PNG de 192 y 512 px, variantes maskable en ambos tamaños y Apple Touch Icon. El service worker `motoservice-static-v13` precarga únicamente CSS, JavaScript, manifest e imágenes propias. Sólo responde desde caché a rutas bajo `/static/`; las páginas autenticadas y los datos privados, incluidas `/guia/`, `/usuarios/`, `/cuenta/` y las vistas de recuperación, siempre dependen de la red y del control de acceso de Django.

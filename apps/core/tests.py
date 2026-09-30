@@ -3,7 +3,7 @@ from urllib.parse import parse_qs, urlparse
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.test import RequestFactory, TestCase
+from django.test import RequestFactory, SimpleTestCase, TestCase
 from django.urls import resolve, reverse
 from django.utils import timezone
 from django.views.defaults import (
@@ -17,6 +17,46 @@ from apps.clientes.models import Cliente
 from apps.mantenimientos.models import MantenimientoRealizado, TipoMantenimiento
 from apps.motos.models import Moto
 from apps.servicios.models import Servicio
+from config.version import APP_VERSION
+
+from .context_processors import app_version
+
+
+class VersionConfigurationTests(SimpleTestCase):
+    def test_app_version_oficial(self):
+        self.assertEqual(APP_VERSION, "1.0.0")
+
+    def test_context_processor_expone_version(self):
+        request = RequestFactory().get("/")
+
+        self.assertEqual(app_version(request), {"app_version": APP_VERSION})
+
+
+class VersionRenderingTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.usuario = get_user_model().objects.create_user(
+            username="version-test",
+            password="clave-segura",
+        )
+
+    def test_dashboard_autenticado_muestra_version(self):
+        self.client.force_login(self.usuario)
+
+        response = self.client.get(reverse("core:dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "MotoService · v1.0.0")
+        self.assertContains(
+            response,
+            'aria-label="Versión de MotoService 1.0.0"',
+        )
+
+    def test_login_publico_muestra_version(self):
+        response = self.client.get(reverse("login"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "MotoService · v1.0.0")
 
 
 class DashboardTests(TestCase):
@@ -387,7 +427,7 @@ class ProductionReadinessTests(TestCase):
         self.assertIn('url.pathname.startsWith("/static/")', contenido)
         self.assertIn('event.request.method !== "GET"', contenido)
         self.assertIn("url.origin !== self.location.origin", contenido)
-        self.assertIn('const CACHE_NAME = "motoservice-static-v12"', contenido)
+        self.assertIn('const CACHE_NAME = "motoservice-static-v13"', contenido)
         for asset in (
             "/static/icons/ui.svg",
             "/static/js/guide.js",

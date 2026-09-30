@@ -59,6 +59,8 @@
     </main>
   {% endif %}
 
+  <footer class="app-version" aria-label="Versión de MotoService {{ app_version }}">MotoService · v{{ app_version }}</footer>
+
   {% if messages %}
     <div class="app-toast-stack" aria-live="polite" aria-atomic="true">
       {% for message in messages %}
