@@ -212,3 +212,9 @@ python manage.py backup_database --output-dir "/ruta/privada/MotoService"
 ```
 
 No se ejecuta desde el navegador ni se guarda permanentemente en Railway. El procedimiento de validación, custodia y restauración segura está en [docs/backups.md](docs/backups.md).
+
+## Licencia
+
+MotoService es software propietario. Todos los derechos reservados.
+
+Consultá el archivo LICENSE para conocer las condiciones de uso.
