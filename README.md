@@ -10,7 +10,7 @@ Cliente → Moto → Servicio → Mantenimiento → Alerta → Contacto
 
 ## Versión
 
-Versión actual: **v1.0.1**.
+Versión actual: **v1.0.2**.
 
 `config/version.py` es la fuente de verdad de la versión de la aplicación. Los tags Git y releases deben coincidir con el valor definido en ese archivo, usando el prefijo `v`.
 

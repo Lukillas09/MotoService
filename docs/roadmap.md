@@ -39,3 +39,7 @@ Centro de ayuda autenticado con diez categorías, búsqueda local, pasos reutili
 ## Mejora post-lanzamiento — Usuarios y recuperación — Implementada
 
 Gestión privada sobre Django Auth sin Custom User Model: roles Propietario/Usuario, alta por invitación, contraseña elegida por cada persona, recuperación por email, Mi cuenta, cambio de contraseña, desactivación/reactivación y protección del último Propietario y de superusers. Incluye backend de email por entorno y Brevo mediante su SDK oficial y API HTTPS en producción, respuesta antienumeración, navegación responsive, guía y tests de seguridad. No agrega tablas ni registro público.
+
+## Patch v1.0.2 — Integridad previa a entrega — Implementado
+
+Refuerzo sin migraciones del historial de mantenimiento y contacto: la edición de servicios ya no puede quitar ciclos con seguimiento, seguimientos y eventos quedan en modo consulta dentro del admin, la edición normal de motos impide reducir el kilometraje conocido y todo HTML autenticado recibe una política privada sin almacenamiento en navegador. Incluye validación transaccional y pruebas de regresión.

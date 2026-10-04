@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import transaction
 
 from apps.mantenimientos.models import MantenimientoRealizado
@@ -16,17 +17,46 @@ def guardar_servicio_y_mantenimientos(
     servicio.save()
 
     tipos_ids = {tipo.pk for tipo in tipos_mantenimiento}
-    realizaciones = MantenimientoRealizado.objects.filter(servicio=servicio)
-    if tipos_ids:
-        realizaciones.exclude(tipo_mantenimiento_id__in=tipos_ids).delete()
-    else:
-        realizaciones.delete()
-
-    existentes = set(
-        realizaciones.filter(tipo_mantenimiento_id__in=tipos_ids).values_list(
-            "tipo_mantenimiento_id", flat=True
-        )
+    realizaciones = list(
+        MantenimientoRealizado.objects.select_for_update()
+        .filter(servicio=servicio)
+        .select_related("tipo_mantenimiento")
     )
+    realizaciones_a_eliminar = [
+        realizacion
+        for realizacion in realizaciones
+        if realizacion.tipo_mantenimiento_id not in tipos_ids
+    ]
+    ids_a_eliminar = [realizacion.pk for realizacion in realizaciones_a_eliminar]
+    ids_con_seguimiento = set(
+        MantenimientoRealizado.objects.filter(
+            pk__in=ids_a_eliminar,
+            seguimientos__isnull=False,
+        ).values_list("pk", flat=True)
+    )
+    if ids_con_seguimiento:
+        nombres = ", ".join(
+            realizacion.tipo_mantenimiento.nombre
+            for realizacion in realizaciones_a_eliminar
+            if realizacion.pk in ids_con_seguimiento
+        )
+        raise ValidationError(
+            {
+                "mantenimientos": (
+                    "No se pueden quitar mantenimientos con seguimiento de contacto "
+                    f"asociado: {nombres}. El seguimiento y su historial deben conservarse."
+                )
+            }
+        )
+
+    if ids_a_eliminar:
+        MantenimientoRealizado.objects.filter(pk__in=ids_a_eliminar).delete()
+
+    existentes = {
+        realizacion.tipo_mantenimiento_id
+        for realizacion in realizaciones
+        if realizacion.tipo_mantenimiento_id in tipos_ids
+    }
     MantenimientoRealizado.objects.bulk_create(
         [
             MantenimientoRealizado(

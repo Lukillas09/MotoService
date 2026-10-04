@@ -25,7 +25,7 @@ from .context_processors import app_version
 
 class VersionConfigurationTests(SimpleTestCase):
     def test_app_version_oficial(self):
-        self.assertEqual(APP_VERSION, "1.0.1")
+        self.assertEqual(APP_VERSION, "1.0.2")
 
     def test_context_processor_expone_version(self):
         request = RequestFactory().get("/")
@@ -47,18 +47,18 @@ class VersionRenderingTests(TestCase):
         response = self.client.get(reverse("core:dashboard"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "MotoService · v1.0.1", count=1)
+        self.assertContains(response, "MotoService · v1.0.2", count=1)
         self.assertContains(response, 'class="app-version"', count=1)
         self.assertContains(
             response,
-            'aria-label="Versión de MotoService 1.0.1"',
+            'aria-label="Versión de MotoService 1.0.2"',
         )
 
     def test_login_publico_muestra_version(self):
         response = self.client.get(reverse("login"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "MotoService · v1.0.1", count=1)
+        self.assertContains(response, "MotoService · v1.0.2", count=1)
         self.assertContains(response, 'class="app-version"', count=1)
         self.assertContains(response, 'class="app-public')
         self.assertNotContains(response, 'class="mobile-bottom-nav"')

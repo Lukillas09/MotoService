@@ -46,6 +46,9 @@ class MotoForm(BootstrapFormMixin, forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._kilometraje_actual_original = (
+            self.instance.kilometraje_actual if self.instance.pk else None
+        )
         clientes = Cliente.objects.filter(activo=True)
         if self.instance.pk and self.instance.cliente_id:
             clientes = Cliente.objects.filter(
@@ -55,3 +58,14 @@ class MotoForm(BootstrapFormMixin, forms.ModelForm):
             "apellido", "nombre", "pk"
         )
         self.fields["cliente"].empty_label = "Seleccioná un cliente"
+
+    def clean_kilometraje_actual(self):
+        kilometraje = self.cleaned_data.get("kilometraje_actual")
+        original = self._kilometraje_actual_original
+        if original is not None and (kilometraje is None or kilometraje < original):
+            original_formateado = f"{original:,}".replace(",", ".")
+            raise forms.ValidationError(
+                "El kilometraje no puede ser menor al último registrado "
+                f"({original_formateado} km). Verificá el valor ingresado."
+            )
+        return kilometraje

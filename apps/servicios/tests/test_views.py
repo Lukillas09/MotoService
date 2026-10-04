@@ -8,6 +8,10 @@ from django.urls import reverse
 from apps.clientes.models import Cliente
 from apps.mantenimientos.models import MantenimientoRealizado, TipoMantenimiento
 from apps.motos.models import Moto
+from apps.notificaciones.models import (
+    EventoSeguimientoMantenimiento,
+    SeguimientoMantenimiento,
+)
 
 from apps.servicios.models import Servicio
 
@@ -212,6 +216,56 @@ class ServicioViewTests(TestCase):
         self.assertEqual(servicio.creado_por, self.usuario)
         self.assertEqual(servicio.estado, Servicio.Estado.ABIERTO)
         self.assertContains(response, "Servicio actualizado correctamente.")
+
+    def test_edicion_no_quita_mantenimiento_con_seguimiento(self):
+        servicio = self.crear_servicio(trabajos_adicionales="Trabajo original")
+        mantenimiento = MantenimientoRealizado.objects.create(
+            servicio=servicio,
+            tipo_mantenimiento=self.aceite,
+        )
+        MantenimientoRealizado.objects.create(
+            servicio=servicio,
+            tipo_mantenimiento=self.filtro,
+        )
+        seguimiento = SeguimientoMantenimiento.objects.create(
+            mantenimiento_base=mantenimiento,
+            cliente=servicio.cliente,
+        )
+        evento = EventoSeguimientoMantenimiento.objects.create(
+            seguimiento=seguimiento,
+            tipo_evento=EventoSeguimientoMantenimiento.Tipo.NOTA,
+            nota="Conservar este historial",
+        )
+
+        response = self.client.post(
+            reverse("servicios:update", args=(servicio.pk,)),
+            self.datos_servicio(
+                mantenimientos=[self.filtro.pk],
+                trabajos_adicionales="Trabajo modificado",
+            ),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Cambio de aceite")
+        self.assertContains(response, "seguimiento y su historial deben conservarse")
+        self.assertIn("mantenimientos", response.context["form"].errors)
+        servicio.refresh_from_db()
+        self.assertEqual(servicio.kilometraje, 11000)
+        self.assertEqual(servicio.trabajos_adicionales, "Trabajo original")
+        self.assertSetEqual(
+            set(
+                servicio.mantenimientos_realizados.values_list(
+                    "tipo_mantenimiento_id", flat=True
+                )
+            ),
+            {self.aceite.pk, self.filtro.pk},
+        )
+        self.assertTrue(
+            SeguimientoMantenimiento.objects.filter(pk=seguimiento.pk).exists()
+        )
+        self.assertTrue(
+            EventoSeguimientoMantenimiento.objects.filter(pk=evento.pk).exists()
+        )
 
     def test_cancelar_es_post_conserva_registro_y_no_reduce_kilometraje(self):
         servicio = self.crear_servicio(kilometraje=13000)

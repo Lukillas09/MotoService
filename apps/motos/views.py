@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.db.models import Prefetch
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
@@ -98,12 +99,18 @@ def moto_create(request):
 
 @login_required
 def moto_update(request, pk):
-    moto = get_object_or_404(Moto.objects.select_related("cliente"), pk=pk)
-    form = MotoForm(request.POST or None, instance=moto)
-    if request.method == "POST" and form.is_valid():
-        moto = form.save()
-        messages.success(request, "Moto actualizada correctamente.")
-        return redirect("motos:detail", pk=moto.pk)
+    motos = Moto.objects.select_related("cliente")
+    if request.method == "POST":
+        with transaction.atomic():
+            moto = get_object_or_404(motos.select_for_update(), pk=pk)
+            form = MotoForm(request.POST, instance=moto)
+            if form.is_valid():
+                moto = form.save()
+                messages.success(request, "Moto actualizada correctamente.")
+                return redirect("motos:detail", pk=moto.pk)
+    else:
+        moto = get_object_or_404(motos, pk=pk)
+        form = MotoForm(instance=moto)
 
     return render(
         request,

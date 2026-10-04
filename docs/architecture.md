@@ -10,7 +10,9 @@ Django concentra templates, autenticacion, reglas de negocio, vistas y admin en 
 
 La app `servicios` administra las visitas al taller y conserva una referencia histórica al cliente que era propietario al momento del registro. La app `mantenimientos` administra el catálogo, las reglas configurables, los trabajos realizados y el cálculo de próximos mantenimientos.
 
-El alta y la edición de un servicio se ejecutan dentro de una transacción. La misma operación guarda el servicio, sincroniza sus mantenimientos y actualiza el último kilometraje conocido de la moto solo si el nuevo valor es mayor. El modelo bloquea la moto durante esa actualización para proteger el kilometraje ante registros concurrentes.
+El alta y la edición de un servicio se ejecutan dentro de una transacción. La misma operación guarda el servicio, sincroniza sus mantenimientos y actualiza el último kilometraje conocido de la moto solo si el nuevo valor es mayor. El modelo bloquea la moto durante esa actualización para proteger el kilometraje ante registros concurrentes. Antes de quitar un mantenimiento realizado, el servicio verifica si existe seguimiento de contacto y rechaza la edición con un error de dominio para conservar el ciclo y su historial.
+
+La edición normal de una moto no admite reducir ni vaciar su último kilometraje conocido. En los POST de edición se bloquea la fila durante la validación y el guardado para evitar que dos cambios concurrentes reduzcan el valor de forma accidental.
 
 Railway sera el hosting de la aplicacion Django. Supabase se usara principalmente como PostgreSQL administrado en produccion.
 
@@ -18,7 +20,7 @@ Railway sera el hosting de la aplicacion Django. Supabase se usara principalment
 
 La configuración de producción exige `SECRET_KEY` y `DATABASE_URL`, mantiene `DEBUG=False`, requiere PostgreSQL con SSL y toma hosts y orígenes CSRF desde variables de entorno. Django confía en el encabezado HTTPS del proxy de Railway, redirige a HTTPS y marca como seguras las cookies de sesión y CSRF.
 
-WhiteNoise sirve los estáticos generados por `collectstatic` con el backend comprimido y con manifiesto configurado mediante `STORAGES`. El service worker se publica desde la raíz requerida por su alcance, pero sólo intercepta solicitudes GET bajo `/static/`; las páginas autenticadas y los datos privados no se almacenan en caché. HSTS se habilitará al cerrar el despliegue, después de confirmar el dominio y HTTPS de extremo a extremo.
+WhiteNoise sirve los estáticos generados por `collectstatic` con el backend comprimido y con manifiesto configurado mediante `STORAGES`. El service worker se publica desde la raíz requerida por su alcance, pero sólo intercepta solicitudes GET bajo `/static/`. Un middleware central marca el HTML autenticado como `private, no-store` sin modificar estáticos, manifest, service worker, login público ni descargas con política propia. HSTS se habilitará al cerrar el despliegue, después de confirmar el dominio y HTTPS de extremo a extremo.
 
 La versión oficial de la aplicación se define explícitamente en `config/version.py` y llega a los templates mediante un context processor de `core`. No depende de Git ni del filesystem del contenedor, y los tags publicados deben coincidir con esa fuente de verdad.
 
@@ -57,6 +59,8 @@ La superposición se realiza en lote: primero se calculan las alertas, luego se 
 Cada mutación recalcula y bloquea la moto y la regla dentro de `transaction.atomic`, comprueba que el mantenimiento base enviado como referencia siga siendo el ciclo actual, bloquea o crea el seguimiento y registra su evento en la misma transacción. Esto evita aplicar una acción abierta en una página vieja a un ciclo nuevo.
 
 WhatsApp se integra exclusivamente mediante un enlace `wa.me` generado en el servidor con el propietario actual y un mensaje precargado. No hay API, envío automático ni llamada saliente desde el backend. Abrir el enlace tampoco registra contacto: el usuario debe ejecutar explícitamente la acción POST correspondiente.
+
+El admin de Django permite listar, buscar, filtrar y consultar seguimientos y eventos, pero no crearlos, editarlos ni eliminarlos. Todas las mutaciones continúan pasando por los servicios de dominio y sus transacciones.
 
 ## Exportaciones y backups
 

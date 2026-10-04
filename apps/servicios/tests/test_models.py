@@ -12,6 +12,10 @@ from django.utils import timezone
 from apps.clientes.models import Cliente
 from apps.mantenimientos.models import MantenimientoRealizado, TipoMantenimiento
 from apps.motos.models import Moto
+from apps.notificaciones.models import (
+    EventoSeguimientoMantenimiento,
+    SeguimientoMantenimiento,
+)
 
 from apps.servicios.models import Servicio
 from apps.servicios.services import guardar_servicio_y_mantenimientos
@@ -228,3 +232,55 @@ class GuardarServicioTests(TestCase):
         self.assertFalse(Servicio.objects.filter(kilometraje=2000).exists())
         self.moto.refresh_from_db()
         self.assertEqual(self.moto.kilometraje_actual, 1000)
+
+    def test_no_quita_mantenimiento_con_seguimiento_y_revierte_la_edicion(self):
+        servicio = guardar_servicio_y_mantenimientos(
+            Servicio(
+                moto=self.moto,
+                kilometraje=1500,
+                trabajos_adicionales="Trabajo original",
+            ),
+            [self.aceite, self.filtro],
+        )
+        mantenimiento = servicio.mantenimientos_realizados.get(
+            tipo_mantenimiento=self.aceite
+        )
+        seguimiento = SeguimientoMantenimiento.objects.create(
+            mantenimiento_base=mantenimiento,
+            cliente=servicio.cliente,
+        )
+        evento = EventoSeguimientoMantenimiento.objects.create(
+            seguimiento=seguimiento,
+            tipo_evento=EventoSeguimientoMantenimiento.Tipo.NOTA,
+            nota="Conservar este historial",
+        )
+
+        servicio.kilometraje = 2000
+        servicio.trabajos_adicionales = "Trabajo modificado"
+        with self.assertRaises(ValidationError) as contexto:
+            guardar_servicio_y_mantenimientos(servicio, [self.filtro])
+
+        self.assertIn("mantenimientos", contexto.exception.message_dict)
+        self.assertIn(
+            "Cambio de aceite",
+            contexto.exception.message_dict["mantenimientos"][0],
+        )
+        servicio.refresh_from_db()
+        self.moto.refresh_from_db()
+        self.assertEqual(servicio.kilometraje, 1500)
+        self.assertEqual(servicio.trabajos_adicionales, "Trabajo original")
+        self.assertEqual(self.moto.kilometraje_actual, 1500)
+        self.assertSetEqual(
+            set(
+                servicio.mantenimientos_realizados.values_list(
+                    "tipo_mantenimiento_id", flat=True
+                )
+            ),
+            {self.aceite.pk, self.filtro.pk},
+        )
+        self.assertTrue(
+            SeguimientoMantenimiento.objects.filter(pk=seguimiento.pk).exists()
+        )
+        self.assertTrue(
+            EventoSeguimientoMantenimiento.objects.filter(pk=evento.pk).exists()
+        )

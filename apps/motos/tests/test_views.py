@@ -131,6 +131,7 @@ class MotoViewTests(TestCase):
         )
 
         moto = Moto.objects.get(patente="AE987ZX")
+        self.assertEqual(moto.kilometraje_actual, 12000)
         self.assertRedirects(response, reverse("motos:detail", args=(moto.pk,)))
         self.assertContains(response, "Moto creada correctamente.")
 
@@ -206,12 +207,59 @@ class MotoViewTests(TestCase):
     def test_editar_moto_vuelve_a_normalizar_patente(self):
         response = self.client.post(
             reverse("motos:update", args=(self.moto.pk,)),
-            self.datos_moto(patente=" zz-999 aa "),
+            self.datos_moto(
+                patente=" zz-999 aa ",
+                kilometraje_actual=self.moto.kilometraje_actual,
+            ),
             follow=True,
         )
 
         self.moto.refresh_from_db()
         self.assertEqual(self.moto.patente, "ZZ999AA")
+        self.assertContains(response, "Moto actualizada correctamente.")
+
+    def test_editar_moto_rechaza_kilometraje_menor_y_conserva_el_real(self):
+        moto = Moto.objects.create(
+            cliente=self.cliente,
+            marca="Honda",
+            modelo="Wave",
+            kilometraje_actual=12000,
+        )
+
+        response = self.client.post(
+            reverse("motos:update", args=(moto.pk,)),
+            self.datos_moto(patente="AB123CD", kilometraje_actual=9000),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("kilometraje_actual", response.context["form"].errors)
+        self.assertContains(
+            response,
+            "El kilometraje no puede ser menor al último registrado (12.000 km).",
+        )
+        moto.refresh_from_db()
+        self.assertEqual(moto.kilometraje_actual, 12000)
+
+    def test_editar_moto_permite_kilometraje_igual(self):
+        response = self.client.post(
+            reverse("motos:update", args=(self.moto.pk,)),
+            self.datos_moto(kilometraje_actual=32450),
+            follow=True,
+        )
+
+        self.moto.refresh_from_db()
+        self.assertEqual(self.moto.kilometraje_actual, 32450)
+        self.assertContains(response, "Moto actualizada correctamente.")
+
+    def test_editar_moto_permite_aumentar_kilometraje(self):
+        response = self.client.post(
+            reverse("motos:update", args=(self.moto.pk,)),
+            self.datos_moto(kilometraje_actual=33000),
+            follow=True,
+        )
+
+        self.moto.refresh_from_db()
+        self.assertEqual(self.moto.kilometraje_actual, 33000)
         self.assertContains(response, "Moto actualizada correctamente.")
 
     def test_edicion_conserva_cliente_archivado_actual_como_opcion(self):
