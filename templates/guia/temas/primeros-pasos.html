@@ -22,6 +22,6 @@
   <li><a href="{% url 'motos:list' %}">Motos</a>: ficha, propietario e historial.</li>
   <li><a href="{% url 'servicios:list' %}">Servicios</a>: trabajos registrados y nuevos ingresos.</li>
   <li><a href="{% url 'notificaciones:alertas' %}">Mantenimientos</a>: alertas, seguimiento y reglas.</li>
-  <li><a href="{% url 'exportaciones:index' %}">Exportaciones</a>: descargas de información.</li>
+  {% if es_propietario_actual %}<li><a href="{% url 'exportaciones:index' %}">Exportaciones</a>: descargas de información.</li>{% endif %}
 </ul>
 {% include "guia/_tip.html" with texto="Buscá por patente, nombre, teléfono, marca o modelo desde la barra superior. En el celular, tocá la lupa; el menú Más reúne las otras secciones." %}

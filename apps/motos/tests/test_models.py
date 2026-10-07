@@ -102,11 +102,66 @@ class MotoModelTests(TestCase):
                     **datos,
                 )
 
+    def test_instancia_obsoleta_no_puede_reducir_kilometraje(self):
+        moto = Moto.objects.create(
+            cliente=self.cliente,
+            marca="Honda",
+            modelo="Wave",
+            kilometraje_actual=12000,
+        )
+        instancia_obsoleta = Moto.objects.get(pk=moto.pk)
+        Moto.objects.filter(pk=moto.pk).update(kilometraje_actual=15000)
+
+        instancia_obsoleta.kilometraje_actual = 13000
+        with self.assertRaises(ValidationError) as contexto:
+            instancia_obsoleta.save()
+
+        self.assertIn("kilometraje_actual", contexto.exception.message_dict)
+        moto.refresh_from_db()
+        self.assertEqual(moto.kilometraje_actual, 15000)
+
+    def test_update_parcial_obsoleto_no_sobrescribe_kilometraje(self):
+        moto = Moto.objects.create(
+            cliente=self.cliente,
+            marca="Honda",
+            modelo="Wave",
+            kilometraje_actual=12000,
+        )
+        instancia_obsoleta = Moto.objects.get(pk=moto.pk)
+        Moto.objects.filter(pk=moto.pk).update(kilometraje_actual=15000)
+
+        instancia_obsoleta.activo = False
+        instancia_obsoleta.save(update_fields=("activo", "actualizado_en"))
+
+        moto.refresh_from_db()
+        self.assertFalse(moto.activo)
+        self.assertEqual(moto.kilometraje_actual, 15000)
+
+    def test_no_crea_moto_para_cliente_archivado_por_orm(self):
+        self.cliente.activo = False
+        self.cliente.save(update_fields=("activo", "actualizado_en"))
+
+        with self.assertRaises(ValidationError) as contexto:
+            Moto.objects.create(
+                cliente=self.cliente,
+                marca="Honda",
+                modelo="Wave",
+            )
+
+        self.assertIn("cliente", contexto.exception.message_dict)
+        self.assertFalse(Moto.objects.exists())
+
     def test_cliente_es_obligatorio(self):
         moto = Moto(marca="Honda", modelo="Wave")
 
         with self.assertRaises(ValidationError) as error:
             moto.full_clean()
+
+        self.assertIn("cliente", error.exception.message_dict)
+
+    def test_guardar_sin_cliente_conserva_error_de_validacion(self):
+        with self.assertRaises(ValidationError) as error:
+            Moto.objects.create(marca="Honda", modelo="Wave")
 
         self.assertIn("cliente", error.exception.message_dict)
 

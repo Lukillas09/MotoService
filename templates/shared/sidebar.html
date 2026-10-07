@@ -20,9 +20,11 @@
     <a class="sidebar-link {% if namespace == 'mantenimientos' or namespace == 'notificaciones' %}active{% endif %}" href="{% url 'notificaciones:alertas' %}" {% if namespace == 'mantenimientos' or namespace == 'notificaciones' %}aria-current="page"{% endif %}>
       {% include "shared/icon.html" with name="wrench" %}<span>Mantenimientos</span>
     </a>
-    <a class="sidebar-link {% if namespace == 'exportaciones' %}active{% endif %}" href="{% url 'exportaciones:index' %}" {% if namespace == 'exportaciones' %}aria-current="page"{% endif %}>
-      {% include "shared/icon.html" with name="download" %}<span>Exportaciones</span>
-    </a>
+    {% if es_propietario_actual %}
+      <a class="sidebar-link {% if namespace == 'exportaciones' %}active{% endif %}" href="{% url 'exportaciones:index' %}" {% if namespace == 'exportaciones' %}aria-current="page"{% endif %}>
+        {% include "shared/icon.html" with name="download" %}<span>Exportaciones</span>
+      </a>
+    {% endif %}
     <hr class="my-2">
     <a class="sidebar-link {% if namespace == 'usuarios' and url_name == 'cuenta' or namespace == 'usuarios' and url_name == 'cambiar_contrasena' %}active{% endif %}" href="{% url 'usuarios:cuenta' %}" {% if namespace == 'usuarios' and url_name == 'cuenta' or namespace == 'usuarios' and url_name == 'cambiar_contrasena' %}aria-current="page"{% endif %}>
       {% include "shared/icon.html" with name="user" %}<span>Mi cuenta</span>

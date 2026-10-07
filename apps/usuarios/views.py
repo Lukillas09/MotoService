@@ -1,8 +1,12 @@
-from django.contrib import messages
+import logging
+
+from django.contrib import admin, messages
 from django.contrib.auth import get_user_model, logout
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_not_required, login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.models import AnonymousUser
 from django.contrib.auth.views import (
+    LoginView,
     PasswordChangeView,
     PasswordResetCompleteView,
     PasswordResetConfirmView,
@@ -10,14 +14,20 @@ from django.contrib.auth.views import (
     PasswordResetView,
 )
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import DatabaseError
 from django.db.models import Count
 from django.db.models.functions import Lower, Trim
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.urls import reverse, reverse_lazy
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_POST
+
+from config.version import APP_VERSION
 
 from .forms import (
     CambiarContrasenaForm,
@@ -34,7 +44,13 @@ from .roles import (
     puede_modificar_usuario,
     rol_de_usuario,
 )
+from .rate_limiting import (
+    consumir_login,
+    consumir_password_reset,
+    devolver_reservas,
+)
 from .services import (
+    actualizar_mi_cuenta,
     actualizar_usuario,
     crear_usuario_invitado,
     desactivar_usuario,
@@ -45,6 +61,143 @@ from .services import (
 
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
+
+
+def _respuesta_limite_autenticacion(request, *, status, retry_after):
+    # Evita que middlewares posteriores reintenten consultar la sesión cuando
+    # la base no está disponible y mantiene esta respuesta como página pública.
+    request.user = AnonymousUser()
+    if status == 429:
+        titulo = "Esperá antes de volver a intentar"
+        mensaje = (
+            "Recibimos demasiados intentos en poco tiempo. "
+            "Esperá unos minutos y probá nuevamente."
+        )
+    else:
+        titulo = "No pudimos procesar la solicitud"
+        mensaje = (
+            "El acceso no está disponible temporalmente. "
+            "Esperá un momento y probá nuevamente."
+        )
+    contenido = render_to_string(
+        "registration/auth_rate_limited.html",
+        {
+            "app_version": APP_VERSION,
+            "force_public_layout": True,
+            "messages": (),
+            "titulo": titulo,
+            "user": AnonymousUser(),
+            "mensaje": mensaje,
+        },
+    )
+    response = HttpResponse(contenido, status=status, content_type="text/html")
+    response["Retry-After"] = str(max(1, retry_after))
+    return response
+
+
+class RateLimitAutenticacionMixin:
+    rate_limit_endpoint = "autenticacion"
+
+    def consumir_rate_limit(self, request):
+        raise NotImplementedError
+
+    @login_not_required
+    @method_decorator(sensitive_post_parameters())
+    @method_decorator(never_cache)
+    @method_decorator(csrf_protect)
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            return super().dispatch(request, *args, **kwargs)
+        except DatabaseError as error:
+            logger.error(
+                "No se pudo completar la autenticación. "
+                "endpoint=%s error_type=%s",
+                self.rate_limit_endpoint,
+                type(error).__name__,
+            )
+            return _respuesta_limite_autenticacion(
+                request,
+                status=503,
+                retry_after=60,
+            )
+
+    def post(self, request, *args, **kwargs):
+        resultado = self.consumir_rate_limit(request)
+        if not resultado.permitido:
+            return _respuesta_limite_autenticacion(
+                request,
+                status=429,
+                retry_after=resultado.retry_after,
+            )
+
+        self._reservas_rate_limit = resultado.reservas
+        return super().post(request, *args, **kwargs)
+
+
+class IniciarSesionView(RateLimitAutenticacionMixin, LoginView):
+    redirect_authenticated_user = True
+    rate_limit_endpoint = "login"
+
+    def consumir_rate_limit(self, request):
+        return consumir_login(request)
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        _devolver_reservas_seguras(self._reservas_rate_limit, endpoint="login")
+        return response
+
+
+def _devolver_reservas_seguras(reservas, *, endpoint):
+    try:
+        devolver_reservas(reservas)
+    except DatabaseError as error:
+        logger.error(
+            "No se pudo devolver una reserva de autenticación. "
+            "endpoint=%s error_type=%s",
+            endpoint,
+            type(error).__name__,
+        )
+
+
+@login_not_required
+@sensitive_post_parameters()
+@never_cache
+@csrf_protect
+def login_admin_protegido(request):
+    """Aplica los mismos límites antes de delegar al login oficial del admin."""
+    reservas = ()
+    try:
+        if request.method == "POST":
+            resultado = consumir_login(request)
+            if not resultado.permitido:
+                return _respuesta_limite_autenticacion(
+                    request,
+                    status=429,
+                    retry_after=resultado.retry_after,
+                )
+            reservas = resultado.reservas
+
+        response = admin.site.login(request)
+    except DatabaseError as error:
+        logger.error(
+            "No se pudo completar la autenticación. "
+            "endpoint=admin_login error_type=%s",
+            type(error).__name__,
+        )
+        return _respuesta_limite_autenticacion(
+            request,
+            status=503,
+            retry_after=60,
+        )
+
+    if (
+        reservas
+        and 300 <= response.status_code < 400
+        and admin.site.has_permission(request)
+    ):
+        _devolver_reservas_seguras(reservas, endpoint="admin_login")
+    return response
 
 
 def _agregar_error_formulario(form, error):
@@ -245,9 +398,13 @@ def reenviar_invitacion(request, pk):
 def mi_cuenta(request):
     form = MiCuentaForm(request.POST or None, instance=request.user)
     if request.method == "POST" and form.is_valid():
-        form.save()
-        messages.success(request, "Tu perfil fue actualizado.")
-        return redirect("usuarios:cuenta")
+        try:
+            actualizar_mi_cuenta(request.user, form.cleaned_data)
+        except ValidationError as error:
+            _agregar_error_formulario(form, error)
+        else:
+            messages.success(request, "Tu perfil fue actualizado.")
+            return redirect("usuarios:cuenta")
     return render(
         request,
         "usuarios/cuenta.html",
@@ -272,7 +429,7 @@ class CambiarContrasenaView(LoginRequiredMixin, PasswordChangeView):
 
 
 @method_decorator(never_cache, name="dispatch")
-class RecuperarContrasenaView(PasswordResetView):
+class RecuperarContrasenaView(RateLimitAutenticacionMixin, PasswordResetView):
     template_name = "registration/password_reset_form.html"
     form_class = RecuperarContrasenaForm
     email_template_name = "registration/password_reset_email.txt"
@@ -280,6 +437,10 @@ class RecuperarContrasenaView(PasswordResetView):
     subject_template_name = "registration/password_reset_subject.txt"
     success_url = reverse_lazy("password_reset_done")
     extra_context = {"force_public_layout": True}
+    rate_limit_endpoint = "password_reset"
+
+    def consumir_rate_limit(self, request):
+        return consumir_password_reset(request)
 
 
 @method_decorator(never_cache, name="dispatch")

@@ -13,6 +13,10 @@ from apps.clientes.models import (
     normalizar_telefono_busqueda,
 )
 from apps.motos.models import Moto, normalizar_patente
+from apps.motos.services import (
+    PropietarioMotoCambioDuranteBloqueo,
+    bloquear_cliente_actual_y_moto,
+)
 
 
 class ServicioQuerySet(models.QuerySet):
@@ -157,20 +161,43 @@ class Servicio(models.Model):
                 if not self.moto_id:
                     self.full_clean()
                 try:
-                    moto = (
-                        Moto.objects.select_for_update()
-                        .select_related("cliente")
-                        .get(pk=self.moto_id)
-                    )
-                except Moto.DoesNotExist as error:
+                    cliente, moto = bloquear_cliente_actual_y_moto(self.moto_id)
+                except (Moto.DoesNotExist, Cliente.DoesNotExist) as error:
                     raise ValidationError(
                         {"moto": "La moto seleccionada no existe."}
                     ) from error
+                except PropietarioMotoCambioDuranteBloqueo as error:
+                    raise ValidationError(
+                        {
+                            "moto": (
+                                "La moto cambió de propietario mientras se registraba "
+                                "el servicio. Revisá los datos e intentá nuevamente."
+                            )
+                        }
+                    ) from error
                 self.moto = moto
-                self.cliente = moto.cliente
+                self.cliente = cliente
             else:
-                original = Servicio.objects.select_for_update().get(pk=self.pk)
+                try:
+                    moto_id_original = Servicio.objects.values_list(
+                        "moto_id", flat=True
+                    ).get(pk=self.pk)
+                    moto = Moto.objects.select_for_update(no_key=True).get(
+                        pk=moto_id_original
+                    )
+                    original = Servicio.objects.select_for_update(no_key=True).get(
+                        pk=self.pk
+                    )
+                except (Servicio.DoesNotExist, Moto.DoesNotExist) as error:
+                    raise ValidationError(
+                        "El servicio ya no existe o su moto no está disponible."
+                    ) from error
                 errores = {}
+                if original.moto_id != moto.pk:
+                    errores["moto"] = (
+                        "La moto del servicio cambió durante la operación. "
+                        "Revisá los datos e intentá nuevamente."
+                    )
                 if self.moto_id != original.moto_id:
                     errores["moto"] = "La moto de un servicio existente no se puede cambiar."
                 if self.cliente_id != original.cliente_id:
@@ -183,7 +210,6 @@ class Servicio(models.Model):
                     )
                 if errores:
                     raise ValidationError(errores)
-                moto = Moto.objects.select_for_update().get(pk=original.moto_id)
 
             self.full_clean()
             resultado = super().save(*args, **kwargs)

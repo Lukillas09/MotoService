@@ -26,7 +26,7 @@ Versión actual: **v1.0.2**.
 
 ## Funcionalidad actual
 
-- autenticación con Django Auth, gestión privada de usuarios y vistas operativas privadas;
+- autenticación con Django Auth, rate limiting persistente y vistas operativas privadas;
 - roles simples Propietario/Usuario, invitaciones por email y recuperación de contraseña;
 - perfil “Mi cuenta”, cambio de contraseña, desactivación y reactivación sin borrar historial;
 - alta, edición, búsqueda y archivado/restauración de clientes y motos;
@@ -39,7 +39,7 @@ Versión actual: **v1.0.2**.
 - seguimiento por ciclo y propietario, con historial de eventos;
 - contacto manual por WhatsApp mediante enlaces `wa.me` con mensaje precargado;
 - acciones de contacto, posposición, turno, no interesado, notas y reapertura;
-- exportaciones CSV de clientes, motos, servicios, mantenimientos y seguimientos;
+- exportaciones CSV de clientes, motos, servicios, mantenimientos y seguimientos, reservadas a Propietarios;
 - Excel completo con todos los datos operativos;
 - backup manual recuperable del schema PostgreSQL mediante `pg_dump`;
 - interfaz final responsive con sidebar y topbar en escritorio;
@@ -61,7 +61,7 @@ El seguimiento humano sí se persiste y puede estar `PENDIENTE`, `CONTACTADO`, `
 - Python 3.12 o una versión compatible con Django 5
 - PostgreSQL para desarrollo real o Supabase PostgreSQL en producción
 
-Si `DATABASE_URL` está vacío, la configuración de desarrollo usa SQLite como comodidad local. La configuración de tests siempre usa SQLite en memoria y no consulta Supabase.
+Si `DATABASE_URL` está vacío, la configuración de desarrollo usa SQLite como comodidad local. Los tests usan SQLite en memoria por defecto y nunca toman `DATABASE_URL`. Para probar locks reales puede definirse exclusivamente `TEST_DATABASE_URL` contra una instancia PostgreSQL descartable con permiso para crear la base de test; nunca debe apuntar a producción ni a Supabase productivo.
 
 ## Instalación local
 
@@ -97,7 +97,7 @@ Rutas principales:
 - `http://127.0.0.1:8000/servicios/`
 - `http://127.0.0.1:8000/mantenimientos/`
 - `http://127.0.0.1:8000/mantenimientos/configuracion/`
-- `http://127.0.0.1:8000/exportaciones/`
+- `http://127.0.0.1:8000/exportaciones/` (solo Propietario)
 - `http://127.0.0.1:8000/guia/`
 - `http://127.0.0.1:8000/cuenta/`
 - `http://127.0.0.1:8000/usuarios/` (solo Propietario)
@@ -135,9 +135,18 @@ BREVO_API_KEY=
 BREVO_FROM_EMAIL=servicemoto09@gmail.com
 BREVO_FROM_NAME=MotoService
 PASSWORD_RESET_TIMEOUT=86400
+AUTH_LOGIN_IP_MAX_ATTEMPTS=20
+AUTH_LOGIN_IDENTIFIER_MAX_ATTEMPTS=10
+AUTH_LOGIN_WINDOW_SECONDS=900
+PASSWORD_RESET_IP_MAX_ATTEMPTS=10
+PASSWORD_RESET_IDENTIFIER_MAX_ATTEMPTS=5
+PASSWORD_RESET_WINDOW_SECONDS=3600
+TEST_DATABASE_URL=
 ```
 
 `WHATSAPP_DEFAULT_COUNTRY_CODE` se usa para normalizar teléfonos sin prefijo internacional y `TALLER_NOMBRE` personaliza el mensaje precargado. En producción, `SECRET_KEY` y `DATABASE_URL` son obligatorias; `SECRET_KEY=change-me` se rechaza.
+
+Los seis valores `*_MAX_ATTEMPTS` y `*_WINDOW_SECONDS` controlan las ventanas del login normal, el login del admin y la recuperación. Deben ser enteros positivos. Los contadores se guardan en PostgreSQL con sujetos HMAC, vencen por ventana y pueden purgarse sin un worker mediante `python manage.py limpiar_limites_autenticacion`.
 
 En desarrollo, `DJANGO_DEBUG` controla el modo de depuración y la entrega de estáticos de `runserver`. Tiene prioridad sobre la variable anterior `DEBUG`, que sigue siendo compatible con valores booleanos. Valores ajenos a Django, como `DEBUG=release` heredado del entorno, utilizan el valor predeterminado de desarrollo (`True`). Producción siempre fuerza `DEBUG=False`.
 
@@ -162,6 +171,8 @@ Abrí el enlace de invitación o recuperación que Django imprime en esa misma t
 .\.venv\Scripts\python.exe manage.py test --settings=config.settings.test
 .\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run --settings=config.settings.test
 ```
+
+Las pruebas marcadas como PostgreSQL se omiten honestamente con SQLite. Para ejecutarlas, definí `TEST_DATABASE_URL` con credenciales de una instancia local y descartable; Django creará su base de test. La suite rechaza una URL que no sea PostgreSQL.
 
 ## Estructura
 
@@ -188,6 +199,12 @@ El proyecto incluye `Procfile` y `railway.json`. En Railway se deben configurar:
 - `BREVO_FROM_EMAIL=servicemoto09@gmail.com`
 - `BREVO_FROM_NAME=MotoService`
 - `PASSWORD_RESET_TIMEOUT`
+- `AUTH_LOGIN_IP_MAX_ATTEMPTS`
+- `AUTH_LOGIN_IDENTIFIER_MAX_ATTEMPTS`
+- `AUTH_LOGIN_WINDOW_SECONDS`
+- `PASSWORD_RESET_IP_MAX_ATTEMPTS`
+- `PASSWORD_RESET_IDENTIFIER_MAX_ATTEMPTS`
+- `PASSWORD_RESET_WINDOW_SECONDS`
 
 La configuración de producción fuerza `DEBUG=False`, exige PostgreSQL con SSL, confía en el proxy HTTPS de Railway, redirige a HTTPS y usa cookies seguras. El comando de inicio ejecuta migraciones, `collectstatic` y luego Gunicorn.
 
@@ -203,7 +220,7 @@ El comando usa las variables ya configuradas en Railway; no hay que escribir ni 
 
 ## Exportaciones y backups
 
-La pantalla `/exportaciones/` permite descargar siete CSV y un Excel completo. Son archivos legibles para análisis y portabilidad; no reemplazan una copia recuperable de PostgreSQL.
+La pantalla `/exportaciones/`, sus siete CSV, el Excel completo y las instrucciones de backup requieren rol Propietario o superuser. Un Usuario autenticado recibe HTTP 403 aunque intente abrir la URL directamente. Son archivos legibles para análisis y portabilidad; no reemplazan una copia recuperable de PostgreSQL.
 
 El backup real se crea manualmente desde una computadora controlada con las herramientas cliente de PostgreSQL:
 

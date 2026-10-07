@@ -268,7 +268,7 @@ print(json.dumps({
                 )
                 self.assertEqual(result.stdout.strip(), backend)
 
-    def test_env_example_documenta_email_sin_credenciales(self):
+    def test_env_example_documenta_email_y_limites_sin_credenciales(self):
         contenido = (Path(settings.BASE_DIR) / ".env.example").read_text(
             encoding="utf-8"
         )
@@ -278,6 +278,13 @@ print(json.dumps({
             "BREVO_FROM_EMAIL",
             "BREVO_FROM_NAME",
             "PASSWORD_RESET_TIMEOUT",
+            "AUTH_LOGIN_IP_MAX_ATTEMPTS",
+            "AUTH_LOGIN_IDENTIFIER_MAX_ATTEMPTS",
+            "AUTH_LOGIN_WINDOW_SECONDS",
+            "PASSWORD_RESET_IP_MAX_ATTEMPTS",
+            "PASSWORD_RESET_IDENTIFIER_MAX_ATTEMPTS",
+            "PASSWORD_RESET_WINDOW_SECONDS",
+            "TEST_DATABASE_URL",
         ):
             self.assertIn(f"{nombre}=", contenido)
         self.assertIn("BREVO_API_KEY=\n", contenido.replace("\r\n", "\n"))

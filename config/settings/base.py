@@ -38,6 +38,13 @@ def env_int(name, default):
         raise ImproperlyConfigured(f"{name} must be an integer.") from error
 
 
+def env_positive_int(name, default):
+    value = env_int(name, default)
+    if value <= 0:
+        raise ImproperlyConfigured(f"{name} must be greater than zero.")
+    return value
+
+
 SECRET_KEY = os.getenv("SECRET_KEY", "change-me")
 DEBUG = env_bool("DEBUG", False)
 
@@ -57,6 +64,25 @@ BREVO_API_KEY = os.getenv("BREVO_API_KEY", "").strip()
 BREVO_FROM_EMAIL = os.getenv("BREVO_FROM_EMAIL", "").strip()
 BREVO_FROM_NAME = os.getenv("BREVO_FROM_NAME", "").strip()
 PASSWORD_RESET_TIMEOUT = env_int("PASSWORD_RESET_TIMEOUT", 86400)
+AUTH_LOGIN_IP_MAX_ATTEMPTS = env_positive_int(
+    "AUTH_LOGIN_IP_MAX_ATTEMPTS", 20
+)
+AUTH_LOGIN_IDENTIFIER_MAX_ATTEMPTS = env_positive_int(
+    "AUTH_LOGIN_IDENTIFIER_MAX_ATTEMPTS", 10
+)
+AUTH_LOGIN_WINDOW_SECONDS = env_positive_int(
+    "AUTH_LOGIN_WINDOW_SECONDS", 900
+)
+PASSWORD_RESET_IP_MAX_ATTEMPTS = env_positive_int(
+    "PASSWORD_RESET_IP_MAX_ATTEMPTS", 10
+)
+PASSWORD_RESET_IDENTIFIER_MAX_ATTEMPTS = env_positive_int(
+    "PASSWORD_RESET_IDENTIFIER_MAX_ATTEMPTS", 5
+)
+PASSWORD_RESET_WINDOW_SECONDS = env_positive_int(
+    "PASSWORD_RESET_WINDOW_SECONDS", 3600
+)
+AUTH_RATE_LIMIT_CLIENT_IP_META_KEY = "REMOTE_ADDR"
 
 INSTALLED_APPS = [
     "django.contrib.admin",

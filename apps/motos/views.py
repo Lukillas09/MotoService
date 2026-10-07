@@ -15,6 +15,13 @@ from .forms import MotoForm
 from .models import Moto
 
 
+def _cliente_id_enviado(request):
+    try:
+        return int(request.POST.get("cliente", ""))
+    except (TypeError, ValueError):
+        return None
+
+
 @login_required
 def moto_list(request):
     estado = "archivadas" if request.GET.get("estado") == "archivadas" else "activas"
@@ -79,9 +86,25 @@ def moto_create(request):
         initial={"cliente": cliente_inicial} if cliente_inicial else None,
     )
     if request.method == "POST" and form.is_valid():
-        moto = form.save()
-        messages.success(request, "Moto creada correctamente.")
-        return redirect("motos:detail", pk=moto.pk)
+        with transaction.atomic():
+            try:
+                cliente = Cliente.objects.select_for_update(no_key=True).get(
+                    pk=form.cleaned_data["cliente"].pk
+                )
+            except Cliente.DoesNotExist:
+                form.add_error("cliente", "El cliente seleccionado ya no existe.")
+            else:
+                if not cliente.activo:
+                    form.add_error(
+                        "cliente",
+                        "Restaurá el cliente antes de registrar una moto nueva.",
+                    )
+                else:
+                    moto = form.save(commit=False)
+                    moto.cliente = cliente
+                    moto.save()
+                    messages.success(request, "Moto creada correctamente.")
+                    return redirect("motos:detail", pk=moto.pk)
 
     return render(
         request,
@@ -102,7 +125,17 @@ def moto_update(request, pk):
     motos = Moto.objects.select_related("cliente")
     if request.method == "POST":
         with transaction.atomic():
-            moto = get_object_or_404(motos.select_for_update(), pk=pk)
+            cliente_id = _cliente_id_enviado(request)
+            if cliente_id is not None:
+                # El formulario sigue validando la selección. Este lock solo
+                # estabiliza el estado del propietario antes de bloquear Moto.
+                Cliente.objects.select_for_update(no_key=True).filter(
+                    pk=cliente_id
+                ).first()
+            moto = get_object_or_404(
+                Moto.objects.select_for_update(no_key=True),
+                pk=pk,
+            )
             form = MotoForm(request.POST, instance=moto)
             if form.is_valid():
                 moto = form.save()
@@ -128,8 +161,13 @@ def moto_update(request, pk):
 
 @login_required
 @require_POST
+@transaction.atomic
 def moto_archive(request, pk):
-    moto = get_object_or_404(Moto, pk=pk, activo=True)
+    moto = get_object_or_404(
+        Moto.objects.select_for_update(no_key=True),
+        pk=pk,
+        activo=True,
+    )
     moto.activo = False
     moto.save(update_fields=("activo", "actualizado_en"))
     messages.success(request, "Moto archivada.")
@@ -138,8 +176,13 @@ def moto_archive(request, pk):
 
 @login_required
 @require_POST
+@transaction.atomic
 def moto_restore(request, pk):
-    moto = get_object_or_404(Moto, pk=pk, activo=False)
+    moto = get_object_or_404(
+        Moto.objects.select_for_update(no_key=True),
+        pk=pk,
+        activo=False,
+    )
     moto.activo = True
     moto.save(update_fields=("activo", "actualizado_en"))
     messages.success(request, "Moto restaurada.")

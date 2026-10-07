@@ -302,12 +302,18 @@ class ProductionReadinessTests(TestCase):
             with self.subTest(ruta=ruta):
                 self.assertEqual(resolve(ruta).view_name, vista_esperada)
 
-    def test_configuracion_de_tests_no_usa_database_url(self):
-        self.assertEqual(
-            settings.DATABASES["default"]["ENGINE"],
-            "django.db.backends.sqlite3",
-        )
-        self.assertIn("memory", str(settings.DATABASES["default"]["NAME"]))
+    def test_configuracion_de_tests_usa_solo_la_url_de_tests_opcional(self):
+        if settings.TEST_DATABASE_URL:
+            self.assertEqual(
+                settings.DATABASES["default"]["ENGINE"],
+                "django.db.backends.postgresql",
+            )
+        else:
+            self.assertEqual(
+                settings.DATABASES["default"]["ENGINE"],
+                "django.db.backends.sqlite3",
+            )
+            self.assertIn("memory", str(settings.DATABASES["default"]["NAME"]))
 
     def test_staticfiles_de_tests_no_requiere_manifiesto_de_produccion(self):
         self.assertEqual(

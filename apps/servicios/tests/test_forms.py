@@ -14,7 +14,7 @@ class ServicioFormTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.cliente = Cliente.objects.create(nombre="Carlos")
-        cls.cliente_archivado = Cliente.objects.create(nombre="Ana", activo=False)
+        cls.cliente_archivado = Cliente.objects.create(nombre="Ana")
         cls.moto = Moto.objects.create(
             cliente=cls.cliente,
             marca="Honda",
@@ -32,6 +32,8 @@ class ServicioFormTests(TestCase):
             marca="Honda",
             modelo="Biz",
         )
+        cls.cliente_archivado.activo = False
+        cls.cliente_archivado.save(update_fields=("activo", "actualizado_en"))
         cls.aceite = TipoMantenimiento.objects.get(nombre="Cambio de aceite")
 
     def datos(self, **cambios):

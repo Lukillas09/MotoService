@@ -4,6 +4,7 @@ from unittest.mock import patch
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core import mail
+from django.db import IntegrityError, transaction
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -35,6 +36,15 @@ class RecuperacionContrasenaTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("/accounts/reset/", mail.outbox[0].body)
         self.assertNotIn("Clave-anterior-123", mail.outbox[0].body)
+
+    def test_email_historico_con_espacios_externos_se_puede_recuperar(self):
+        self.usuario.email = "  LUCIA@example.com  "
+        self.usuario.save(update_fields=("email",))
+
+        response = self.solicitar("lucia@example.com")
+
+        self.assertRedirects(response, reverse("password_reset_done"))
+        self.assertEqual(len(mail.outbox), 1)
 
     @override_settings(
         EMAIL_BACKEND="apps.core.email_backends.BrevoEmailBackend",
@@ -166,13 +176,13 @@ class RecuperacionContrasenaTests(TestCase):
         self.assertNotContains(response, "lucia@example.com")
         self.assertNotIn("lucia@example.com", logs.output[0])
 
-    def test_duplicados_historicos_no_generan_emails_ambiguos(self):
-        get_user_model().objects.create_user(
-            username="otra", password="Otra-clave-123", email="LUCIA@example.com"
-        )
-        response = self.solicitar("lucia@example.com", follow=True)
-        self.assertContains(response, "Si existe una cuenta asociada")
-        self.assertEqual(len(mail.outbox), 0)
+    def test_constraint_impide_crear_duplicados_historicos(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            get_user_model().objects.create_user(
+                username="otra",
+                password="Otra-clave-123",
+                email="  LUCIA@example.com  ",
+            )
 
     def test_timeout_y_backend_de_test(self):
         self.assertEqual(settings.PASSWORD_RESET_TIMEOUT, 86400)

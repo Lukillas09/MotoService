@@ -30,7 +30,7 @@
       <a href="{% url 'servicios:list' %}">{% include "shared/icon.html" with name="service-gear" %}<span>Servicios</span>{% include "shared/icon.html" with name="chevron-right" extra_class="ms-auto" %}</a>
       <a href="{% url 'notificaciones:alertas' %}">{% include "shared/icon.html" with name="wrench" %}<span>Mantenimientos</span>{% include "shared/icon.html" with name="chevron-right" extra_class="ms-auto" %}</a>
       <a href="{% url 'mantenimientos:configuracion' %}">{% include "shared/icon.html" with name="settings" %}<span>Configurar reglas</span>{% include "shared/icon.html" with name="chevron-right" extra_class="ms-auto" %}</a>
-      <a href="{% url 'exportaciones:index' %}">{% include "shared/icon.html" with name="download" %}<span>Exportaciones</span>{% include "shared/icon.html" with name="chevron-right" extra_class="ms-auto" %}</a>
+      {% if es_propietario_actual %}<a href="{% url 'exportaciones:index' %}">{% include "shared/icon.html" with name="download" %}<span>Exportaciones</span>{% include "shared/icon.html" with name="chevron-right" extra_class="ms-auto" %}</a>{% endif %}
       <a href="{% url 'core:search' %}">{% include "shared/icon.html" with name="search" %}<span>Búsqueda global</span>{% include "shared/icon.html" with name="chevron-right" extra_class="ms-auto" %}</a>
     </nav>
     <div class="mobile-user-card mt-auto">

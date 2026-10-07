@@ -5,6 +5,7 @@ from django.contrib.auth.forms import (
     PasswordResetForm,
     SetPasswordForm,
 )
+from django.db.models.functions import Lower, Trim
 
 from apps.core.forms import BootstrapFormMixin
 
@@ -152,9 +153,19 @@ class RecuperarContrasenaForm(BootstrapFormMixin, PasswordResetForm):
         )
 
     def get_users(self, email):
-        usuarios = list(super().get_users(normalizar_email(email)))
+        email_normalizado = normalizar_email(email)
+        usuarios = list(
+            User._default_manager.annotate(
+                email_normalizado=Lower(Trim("email"))
+            ).filter(
+                email_normalizado=email_normalizado,
+                is_active=True,
+            )
+        )
         if len(usuarios) == 1:
-            yield usuarios[0]
+            usuario = usuarios[0]
+            if usuario.has_usable_password():
+                yield usuario
 
 
 class NuevaContrasenaForm(BootstrapFormMixin, SetPasswordForm):

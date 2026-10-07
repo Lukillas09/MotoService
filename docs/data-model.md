@@ -156,11 +156,15 @@ Los roles funcionales se derivan sin una tabla propia:
 - `Propietario`: `is_superuser=True` o pertenencia al Group de Django `Propietario`;
 - `Usuario`: cualquier usuario autenticado que no cumple la condición anterior.
 
-Las cuentas creadas desde MotoService requieren un email único ignorando mayúsculas, validado en formularios y servicios sin alterar el schema histórico de `auth_user`. Una cuenta invitada se guarda con `is_active=True` y contraseña no usable hasta que la persona abre el enlace y elige una contraseña. `is_active=False` representa una cuenta desactivada; nunca se elimina desde la interfaz.
+Las cuentas creadas desde MotoService requieren un email único ignorando mayúsculas y espacios externos. Formularios y servicios mantienen la validación amigable, y un índice único funcional de PostgreSQL sobre `LOWER(TRIM(email))` es la garantía definitiva. El índice es parcial y excluye valores cuyo `TRIM` queda vacío, por lo que siguen siendo compatibles varias cuentas históricas sin email. Una cuenta invitada se guarda con `is_active=True` y contraseña no usable hasta que la persona abre el enlace y elige una contraseña. `is_active=False` representa una cuenta desactivada; nunca se elimina desde la interfaz.
 
-Los posibles duplicados o emails vacíos anteriores a esta mejora no se corrigen automáticamente. Un superuser existente sin email conserva el acceso, ve el aviso en Mi cuenta y puede agregar uno. El listado de Propietarios señala grupos de emails históricos duplicados para su corrección manual.
+La migración no corrige, elimina ni fusiona cuentas. Antes de crear el índice toma un lock de tabla en PostgreSQL y busca grupos normalizados duplicados; si existen, aborta con la cantidad de grupos y exige una corrección manual en un entorno controlado. Un superuser existente sin email conserva el acceso, ve el aviso en Mi cuenta y puede agregar uno.
 
 `Servicio.creado_por`, `SeguimientoMantenimiento.ultimo_contacto_por`, `SeguimientoMantenimiento.actualizado_por` y `EventoSeguimientoMantenimiento.usuario` continúan apuntando al usuario de Django. Desactivar una cuenta no modifica esas relaciones ni el historial.
+
+## LimiteAutenticacion
+
+Es una tabla técnica para proteger login y recuperación en varios workers. Guarda `ambito`, `sujeto_hash`, `ventana_iniciada_en`, `intentos` y `expira_en`. La pareja `(ambito, sujeto_hash)` es única y `expira_en` está indexado. El sujeto es un HMAC-SHA256 con `SECRET_KEY`: nunca se persisten IP, username, email ni contraseña en claro. Las filas vencidas se reutilizan al volver a recibir el mismo sujeto o se eliminan mediante el comando administrativo de limpieza.
 
 ## Entidades futuras
 

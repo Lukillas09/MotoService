@@ -1,7 +1,8 @@
-from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.views.decorators.cache import never_cache
+
+from apps.usuarios.roles import propietario_required
 
 from .services import crear_csv, crear_excel_completo
 from .utils import nombre_csv, nombre_excel
@@ -27,61 +28,61 @@ def _respuesta_csv(clave):
     )
 
 
-@login_required
+@propietario_required
 @never_cache
 def index(request):
     return render(request, "exportaciones/index.html")
 
 
-@login_required
+@propietario_required
 @never_cache
 def backup_instructions(request):
     return render(request, "exportaciones/backup.html")
 
 
-@login_required
+@propietario_required
 @never_cache
 def clientes_csv(request):
     return _respuesta_csv("clientes")
 
 
-@login_required
+@propietario_required
 @never_cache
 def motos_csv(request):
     return _respuesta_csv("motos")
 
 
-@login_required
+@propietario_required
 @never_cache
 def servicios_csv(request):
     return _respuesta_csv("servicios")
 
 
-@login_required
+@propietario_required
 @never_cache
 def mantenimientos_csv(request):
     return _respuesta_csv("mantenimientos")
 
 
-@login_required
+@propietario_required
 @never_cache
 def tipos_mantenimiento_csv(request):
     return _respuesta_csv("tipos-mantenimiento")
 
 
-@login_required
+@propietario_required
 @never_cache
 def seguimientos_csv(request):
     return _respuesta_csv("seguimientos")
 
 
-@login_required
+@propietario_required
 @never_cache
 def eventos_seguimiento_csv(request):
     return _respuesta_csv("eventos-seguimiento")
 
 
-@login_required
+@propietario_required
 @never_cache
 def completo_xlsx(request):
     contenido = crear_excel_completo(request.user)

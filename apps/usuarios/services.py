@@ -6,7 +6,7 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.mail import EmailMultiAlternatives
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models.functions import Lower, Trim
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -25,6 +25,10 @@ from .roles import (
 logger = logging.getLogger(__name__)
 
 
+EMAIL_NORMALIZADO_INDEX = "usuarios_user_email_normalizado_uniq"
+MENSAJE_EMAIL_DUPLICADO = "Ya existe un usuario con este correo electrónico."
+
+
 def normalizar_email(email):
     return (email or "").strip().lower()
 
@@ -36,7 +40,27 @@ def validar_email_unico(email, *, excluir_pk=None):
     if excluir_pk is not None:
         queryset = queryset.exclude(pk=excluir_pk)
     if queryset.exists():
-        raise ValidationError("Ya existe un usuario con este correo electrónico.")
+        raise ValidationError(MENSAJE_EMAIL_DUPLICADO)
+
+
+def _es_conflicto_email_normalizado(error):
+    causa = error.__cause__
+    diagnostico = getattr(causa, "diag", None)
+    if getattr(diagnostico, "constraint_name", None) == EMAIL_NORMALIZADO_INDEX:
+        return True
+    return EMAIL_NORMALIZADO_INDEX in str(error)
+
+
+def _guardar_usuario_con_email_unico(usuario, *, update_fields=None):
+    """Convierte solamente la carrera del email en un error de dominio."""
+    try:
+        # El savepoint permite recuperar la transacción exterior tras IntegrityError.
+        with transaction.atomic():
+            usuario.save(update_fields=update_fields)
+    except IntegrityError as error:
+        if _es_conflicto_email_normalizado(error):
+            raise ValidationError({"email": MENSAJE_EMAIL_DUPLICADO}) from None
+        raise
 
 
 def asignar_rol(usuario, rol):
@@ -70,7 +94,7 @@ def crear_usuario_invitado(datos):
     )
     usuario.set_unusable_password()
     usuario.full_clean()
-    usuario.save()
+    _guardar_usuario_con_email_unico(usuario)
     asignar_rol(usuario, datos["rol"])
     return usuario
 
@@ -117,9 +141,22 @@ def actualizar_usuario(actor, objetivo, datos):
     if pendiente and email_cambio:
         objetivo.set_unusable_password()
     objetivo.full_clean()
-    objetivo.save()
+    _guardar_usuario_con_email_unico(objetivo)
     asignar_rol(objetivo, datos["rol"])
     return objetivo, pendiente and email_cambio
+
+
+@transaction.atomic
+def actualizar_mi_cuenta(usuario, datos):
+    objetivo = get_user_model().objects.select_for_update().get(pk=usuario.pk)
+    email = normalizar_email(datos["email"])
+    validar_email_unico(email, excluir_pk=objetivo.pk)
+    objetivo.first_name = datos["first_name"].strip()
+    objetivo.last_name = datos["last_name"].strip()
+    objetivo.email = email
+    objetivo.full_clean()
+    _guardar_usuario_con_email_unico(objetivo)
+    return objetivo
 
 
 @transaction.atomic

@@ -43,3 +43,7 @@ Gestión privada sobre Django Auth sin Custom User Model: roles Propietario/Usua
 ## Patch v1.0.2 — Integridad previa a entrega — Implementado
 
 Refuerzo sin migraciones del historial de mantenimiento y contacto: la edición de servicios ya no puede quitar ciclos con seguimiento, seguimientos y eventos quedan en modo consulta dentro del admin, la edición normal de motos impide reducir el kilometraje conocido y todo HTML autenticado recibe una política privada sin almacenamiento en navegador. Incluye validación transaccional y pruebas de regresión.
+
+## Mejora técnica Fase 1 — Seguridad, integridad y concurrencia — Implementada
+
+Rate limiting persistente para login y recuperación, unicidad definitiva del email normalizado en PostgreSQL, orden explícito de locks entre Cliente, Moto, Servicio, Mantenimiento y Seguimiento, y exportaciones completas limitadas a Propietarios. No agrega Redis, workers, servicios externos ni dependencias.

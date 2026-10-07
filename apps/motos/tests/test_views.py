@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.test import Client as TestClient
 from django.test import TestCase
@@ -7,6 +9,7 @@ from django.utils import timezone
 from apps.clientes.models import Cliente
 from apps.mantenimientos.models import MantenimientoRealizado, TipoMantenimiento
 from apps.mantenimientos.services import EstadoMantenimiento
+from apps.motos.forms import MotoForm
 from apps.motos.models import Moto
 from apps.servicios.models import Servicio
 
@@ -152,6 +155,29 @@ class MotoViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("cliente", response.context["form"].errors)
 
+    def test_revalida_cliente_activo_justo_antes_de_crear_moto(self):
+        validar = MotoForm.is_valid
+
+        def validar_y_archivar(form):
+            es_valido = validar(form)
+            if es_valido:
+                Cliente.objects.filter(pk=self.cliente.pk).update(activo=False)
+            return es_valido
+
+        with patch.object(MotoForm, "is_valid", validar_y_archivar):
+            response = self.client.post(
+                reverse("motos:create"),
+                self.datos_moto(patente="AC123DE"),
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(
+            response.context["form"],
+            "cliente",
+            "Restaurá el cliente antes de registrar una moto nueva.",
+        )
+        self.assertFalse(Moto.objects.filter(patente="AC123DE").exists())
+
     def test_detalle_muestra_datos_e_historial_vacio(self):
         response = self.client.get(reverse("motos:detail", args=(self.moto.pk,)))
 
@@ -263,9 +289,12 @@ class MotoViewTests(TestCase):
         self.assertContains(response, "Moto actualizada correctamente.")
 
     def test_edicion_conserva_cliente_archivado_actual_como_opcion(self):
+        Cliente.objects.filter(pk=self.cliente_archivado.pk).update(activo=True)
         moto = Moto.objects.create(
             cliente=self.cliente_archivado, marca="Honda", modelo="Biz"
         )
+        Cliente.objects.filter(pk=self.cliente_archivado.pk).update(activo=False)
+        self.cliente_archivado.refresh_from_db()
 
         response = self.client.get(reverse("motos:update", args=(moto.pk,)))
 

@@ -1,5 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.contrib.staticfiles import finders
+from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Q
 from django.http import Http404
 from django.shortcuts import render
@@ -9,16 +10,24 @@ from apps.clientes.models import Cliente
 from apps.motos.models import Moto
 from apps.notificaciones.services import obtener_resumen_seguimientos
 from apps.servicios.models import Servicio
+from apps.usuarios.roles import es_propietario
 
 from .guia import CAPTURAS, TEMAS
 
 
+def _temas_guia_visibles(usuario):
+    if es_propietario(usuario):
+        return TEMAS
+    return tuple(tema for tema in TEMAS if tema["slug"] != "exportaciones")
+
+
 @login_required
 def guia_index(request):
+    temas = _temas_guia_visibles(request.user)
     return render(
         request,
         "guia/index.html",
-        {"temas": TEMAS, "guia_activa": True},
+        {"temas": temas, "guia_activa": True},
     )
 
 
@@ -27,7 +36,11 @@ def guia_tema(request, slug):
     tema = next((tema for tema in TEMAS if tema["slug"] == slug), None)
     if tema is None:
         raise Http404("Tema no encontrado")
-    posicion = TEMAS.index(tema)
+    if slug == "exportaciones" and not es_propietario(request.user):
+        raise PermissionDenied
+
+    temas = _temas_guia_visibles(request.user)
+    posicion = temas.index(tema)
     capturas = {
         clave: {
             "archivo": f"guide/{archivo}",
@@ -45,9 +58,9 @@ def guia_tema(request, slug):
         {
             "tema": tema,
             "contenido": f"guia/temas/{tema['slug']}.html",
-            "anterior": TEMAS[posicion - 1] if posicion else None,
+            "anterior": temas[posicion - 1] if posicion else None,
             "siguiente": (
-                TEMAS[posicion + 1] if posicion + 1 < len(TEMAS) else None
+                temas[posicion + 1] if posicion + 1 < len(temas) else None
             ),
             "capturas": capturas,
             "guia_activa": True,

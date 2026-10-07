@@ -18,9 +18,12 @@ def guardar_servicio_y_mantenimientos(
 
     tipos_ids = {tipo.pk for tipo in tipos_mantenimiento}
     realizaciones = list(
-        MantenimientoRealizado.objects.select_for_update()
+        MantenimientoRealizado.objects.select_for_update(
+            of=("self",),
+        )
         .filter(servicio=servicio)
         .select_related("tipo_mantenimiento")
+        .order_by("pk")
     )
     realizaciones_a_eliminar = [
         realizacion

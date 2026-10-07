@@ -8,10 +8,15 @@ from apps.usuarios import views as usuarios_views
 
 
 urlpatterns = [
+    path(
+        "admin/login/",
+        usuarios_views.login_admin_protegido,
+        name="admin_login_protegido",
+    ),
     path("admin/", admin.site.urls),
     path(
         "accounts/login/",
-        auth_views.LoginView.as_view(redirect_authenticated_user=True),
+        usuarios_views.IniciarSesionView.as_view(),
         name="login",
     ),
     path("accounts/logout/", auth_views.LogoutView.as_view(), name="logout"),

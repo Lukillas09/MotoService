@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import TestCase
@@ -92,6 +94,35 @@ class MiCuentaTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Ya existe un usuario con este correo electrónico")
+
+    def test_carrera_de_email_en_mi_cuenta_muestra_error_amigable(self):
+        get_user_model().objects.create_user(
+            username="ocupado",
+            email="ocupado@example.com",
+        )
+        datos = {
+            "first_name": "María",
+            "last_name": "",
+            "email": " OCUPADO@example.com ",
+            "contrasena_actual": "Clave-anterior-123",
+        }
+
+        with patch(
+            "apps.usuarios.forms.validar_email_unico",
+            return_value=None,
+        ), patch(
+            "apps.usuarios.services.validar_email_unico",
+            return_value=None,
+        ):
+            response = self.client.post(reverse("usuarios:cuenta"), datos)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            "Ya existe un usuario con este correo electrónico",
+        )
+        self.usuario.refresh_from_db()
+        self.assertEqual(self.usuario.email, "maria@example.com")
 
     def test_cambio_de_password_mantiene_sesion(self):
         response = self.client.post(

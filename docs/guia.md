@@ -1,6 +1,6 @@
 # Guía de uso integrada
 
-La guía vive en templates bajo `templates/guia/`. No utiliza base de datos, modelos, CMS ni servicios externos. Las rutas requieren autenticación y el service worker no almacena el HTML privado. La categoría “Usuarios y acceso” explica roles, invitaciones, Mi cuenta, recuperación y desactivación sin necesitar capturas adicionales.
+La guía vive en templates bajo `templates/guia/`. No utiliza base de datos, modelos, CMS ni servicios externos. Las rutas requieren autenticación y el service worker no almacena el HTML privado. La categoría y los enlaces de Exportaciones se muestran sólo a Propietarios y superusers; un Usuario autenticado que intenta abrir directamente ese tutorial recibe HTTP 403. La categoría “Usuarios y acceso” explica roles, invitaciones, Mi cuenta, recuperación y desactivación sin necesitar capturas adicionales.
 
 ## Capturas
 

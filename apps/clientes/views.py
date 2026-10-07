@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -68,12 +69,20 @@ def cliente_create(request):
 
 @login_required
 def cliente_update(request, pk):
-    cliente = get_object_or_404(Cliente, pk=pk)
-    form = ClienteForm(request.POST or None, instance=cliente)
-    if request.method == "POST" and form.is_valid():
-        cliente = form.save()
-        messages.success(request, "Cliente actualizado correctamente.")
-        return redirect("clientes:detail", pk=cliente.pk)
+    if request.method == "POST":
+        with transaction.atomic():
+            cliente = get_object_or_404(
+                Cliente.objects.select_for_update(no_key=True),
+                pk=pk,
+            )
+            form = ClienteForm(request.POST, instance=cliente)
+            if form.is_valid():
+                cliente = form.save()
+                messages.success(request, "Cliente actualizado correctamente.")
+                return redirect("clientes:detail", pk=cliente.pk)
+    else:
+        cliente = get_object_or_404(Cliente, pk=pk)
+        form = ClienteForm(instance=cliente)
 
     return render(
         request,
@@ -91,8 +100,13 @@ def cliente_update(request, pk):
 
 @login_required
 @require_POST
+@transaction.atomic
 def cliente_archive(request, pk):
-    cliente = get_object_or_404(Cliente, pk=pk, activo=True)
+    cliente = get_object_or_404(
+        Cliente.objects.select_for_update(no_key=True),
+        pk=pk,
+        activo=True,
+    )
     cliente.activo = False
     cliente.save(update_fields=("activo", "actualizado_en"))
     messages.success(
@@ -104,8 +118,13 @@ def cliente_archive(request, pk):
 
 @login_required
 @require_POST
+@transaction.atomic
 def cliente_restore(request, pk):
-    cliente = get_object_or_404(Cliente, pk=pk, activo=False)
+    cliente = get_object_or_404(
+        Cliente.objects.select_for_update(no_key=True),
+        pk=pk,
+        activo=False,
+    )
     cliente.activo = True
     cliente.save(update_fields=("activo", "actualizado_en"))
     messages.success(request, "Cliente restaurado.")

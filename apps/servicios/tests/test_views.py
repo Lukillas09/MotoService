@@ -187,6 +187,7 @@ class ServicioViewTests(TestCase):
     def test_edicion_conserva_moto_cliente_historico_y_creador(self):
         servicio = self.crear_servicio()
         cliente_historico = servicio.cliente
+        self.moto.refresh_from_db()
         self.moto.cliente = self.otro_cliente
         self.moto.save()
         otra_moto = Moto.objects.create(

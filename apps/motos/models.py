@@ -2,7 +2,7 @@ import re
 
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
-from django.db import models
+from django.db import models, transaction
 from django.db.models import F, Q
 from django.utils import timezone
 
@@ -134,8 +134,55 @@ class Moto(models.Model):
             raise ValidationError(errores)
 
     def save(self, *args, **kwargs):
-        self.full_clean()
-        return super().save(*args, **kwargs)
+        update_fields = kwargs.get("update_fields")
+        actualiza_kilometraje = (
+            update_fields is None or "kilometraje_actual" in update_fields
+        )
+
+        with transaction.atomic():
+            if self._state.adding:
+                if self.cliente_id:
+                    try:
+                        cliente = Cliente.objects.select_for_update(no_key=True).get(
+                            pk=self.cliente_id
+                        )
+                    except Cliente.DoesNotExist as error:
+                        raise ValidationError(
+                            {"cliente": "El cliente seleccionado no existe."}
+                        ) from error
+                    if not cliente.activo:
+                        raise ValidationError(
+                            {
+                                "cliente": (
+                                    "Restaurá el cliente antes de registrar una moto nueva."
+                                )
+                            }
+                        )
+            elif actualiza_kilometraje:
+                actual = (
+                    type(self)
+                    .objects.select_for_update(no_key=True)
+                    .only("kilometraje_actual")
+                    .get(pk=self.pk)
+                )
+                if actual.kilometraje_actual is not None and (
+                    self.kilometraje_actual is None
+                    or self.kilometraje_actual < actual.kilometraje_actual
+                ):
+                    actual_formateado = f"{actual.kilometraje_actual:,}".replace(
+                        ",", "."
+                    )
+                    raise ValidationError(
+                        {
+                            "kilometraje_actual": (
+                                "El kilometraje no puede ser menor al último registrado "
+                                f"({actual_formateado} km). Verificá el valor ingresado."
+                            )
+                        }
+                    )
+
+            self.full_clean()
+            return super().save(*args, **kwargs)
 
     def __str__(self):
         descripcion = f"{self.marca} {self.modelo}"

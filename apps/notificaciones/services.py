@@ -5,6 +5,7 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
+from apps.clientes.models import Cliente
 from apps.core.contacto import normalizar_numero_whatsapp
 from apps.mantenimientos.models import TipoMantenimiento
 from apps.mantenimientos.services import (
@@ -15,6 +16,10 @@ from apps.mantenimientos.services import (
     obtener_resumen_alertas,
 )
 from apps.motos.models import Moto
+from apps.motos.services import (
+    PropietarioMotoCambioDuranteBloqueo,
+    bloquear_cliente_actual_y_moto,
+)
 
 from .models import EventoSeguimientoMantenimiento, SeguimientoMantenimiento
 
@@ -317,15 +322,21 @@ def obtener_alerta_operativa_actual(
     hoy=None,
     bloquear=False,
 ):
-    motos = Moto.objects.select_related("cliente")
-    tipos = TipoMantenimiento.objects.all()
-    if bloquear:
-        motos = motos.select_for_update()
-        tipos = tipos.select_for_update()
     try:
-        moto = motos.get(pk=moto_id)
-        tipo = tipos.get(pk=tipo_id)
-    except (Moto.DoesNotExist, TipoMantenimiento.DoesNotExist) as error:
+        if bloquear:
+            _cliente, moto = bloquear_cliente_actual_y_moto(moto_id)
+            tipo = TipoMantenimiento.objects.select_for_update(no_key=True).get(
+                pk=tipo_id
+            )
+        else:
+            moto = Moto.objects.select_related("cliente").get(pk=moto_id)
+            tipo = TipoMantenimiento.objects.get(pk=tipo_id)
+    except (
+        Moto.DoesNotExist,
+        Cliente.DoesNotExist,
+        TipoMantenimiento.DoesNotExist,
+        PropietarioMotoCambioDuranteBloqueo,
+    ) as error:
         raise AlertaNoOperativa("La alerta solicitada ya no existe.") from error
 
     if not moto.activo or not moto.cliente.activo:
@@ -376,7 +387,9 @@ def _registrar_accion(
             )
 
         seguimiento, creado = (
-            SeguimientoMantenimiento.objects.select_for_update().get_or_create(
+            SeguimientoMantenimiento.objects.select_for_update(
+                no_key=True
+            ).get_or_create(
                 mantenimiento_base=alerta.ultimo_mantenimiento,
                 cliente=alerta.moto.cliente,
             )

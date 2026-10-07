@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from brevo.core.api_error import ApiError
 from django.core.mail import EmailMessage, EmailMultiAlternatives
+from django.core.mail.message import EmailAlternative
 from django.test import SimpleTestCase, override_settings
 
 from apps.core.email_backends import (
@@ -126,13 +127,15 @@ class BrevoEmailBackendTests(SimpleTestCase):
             "<p>Abrí el <strong>enlace</strong> para continuar.</p>",
         )
 
-    def test_admite_alternativa_como_tupla_de_django_5_1(self):
+    def test_admite_alternativa_tipificada_de_django_actual(self):
         message = EmailMultiAlternatives(
             subject="Asunto",
             body="Contenido de texto",
             to=["persona@example.test"],
         )
-        message.alternatives = [("<p>Contenido HTML</p>", "text/html")]
+        message.alternatives = [
+            EmailAlternative("<p>Contenido HTML</p>", "text/html")
+        ]
 
         BrevoEmailBackend().send_messages([message])
 
@@ -336,13 +339,13 @@ class BrevoEmailBackendTests(SimpleTestCase):
         self.assertNotIn("Contenido sensible", error_message)
         self.assertNotIn("persona@example.test", error_message)
 
-    def test_sanitiza_api_error_real_del_sdk(self):
+    def test_sanitiza_api_error_real_del_sdk_con_body_objeto(self):
         self.brevo_send.side_effect = ApiError(
             status_code=429,
-            body={
-                "code": "rate_limit",
-                "message": "test-only-brevo-api-key persona@example.test",
-            },
+            body=SimpleNamespace(
+                code="rate_limit",
+                message="test-only-brevo-api-key persona@example.test",
+            ),
         )
         message = EmailMessage(
             subject="Asunto",
