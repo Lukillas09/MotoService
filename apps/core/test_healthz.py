@@ -1,5 +1,7 @@
+from io import StringIO
 from unittest.mock import patch
 
+from django.core.management import CommandError, call_command
 from django.db import OperationalError
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -10,7 +12,7 @@ from apps.usuarios.models import LimiteAutenticacion
 class HealthzTests(TestCase):
     url = "/healthz/"
 
-    def test_ruta_publica_esperada_por_railway(self):
+    def test_ruta_publica_esperada_por_render(self):
         self.assertEqual(reverse("core:healthz"), self.url)
 
     def test_responde_200_sin_login_sesion_ni_cache(self):
@@ -50,17 +52,52 @@ class HealthzTests(TestCase):
 
         self.assertFalse(LimiteAutenticacion.objects.exists())
 
+    @override_settings(AUTH_LOGIN_IP_MAX_ATTEMPTS=1)
+    def test_responde_aunque_la_ip_este_bloqueada_en_login(self):
+        datos = {"username": "nadie", "password": "incorrecta"}
+        self.client.post(reverse("login"), datos)
+        bloqueado = self.client.post(reverse("login"), datos)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(bloqueado.status_code, 429)
+        self.assertEqual(response.status_code, 200)
+
     @override_settings(
-        ALLOWED_HOSTS=["motoservice.example.test", "healthcheck.railway.app"],
+        ALLOWED_HOSTS=["motoservice.onrender.com"],
         SECURE_SSL_REDIRECT=True,
         SECURE_REDIRECT_EXEMPT=[r"^healthz/$"],
     )
-    def test_healthcheck_interno_por_http_no_se_redirige_a_https(self):
-        interno = self.client.get(self.url, HTTP_HOST="healthcheck.railway.app")
+    def test_health_check_de_render_por_http_no_se_redirige_a_https(self):
+        interno = self.client.get(self.url, HTTP_HOST="motoservice.onrender.com")
         privada = self.client.get(
-            reverse("clientes:list"), HTTP_HOST="motoservice.example.test"
+            reverse("clientes:list"), HTTP_HOST="motoservice.onrender.com"
         )
 
         self.assertEqual(interno.status_code, 200)
         self.assertEqual(privada.status_code, 301)
         self.assertTrue(privada["Location"].startswith("https://"))
+
+
+class VerificarBaseCommandTests(TestCase):
+    def test_informa_que_la_base_responde(self):
+        salida = StringIO()
+
+        call_command("verificar_base", stdout=salida)
+
+        self.assertIn("La base de datos responde.", salida.getvalue())
+
+    def test_falla_con_mensaje_claro_y_sin_detalles_de_conexion(self):
+        with patch("apps.core.management.commands.verificar_base.connection") as conexion:
+            conexion.cursor.side_effect = OperationalError(
+                'connection to "postgres.ref:clave@aws-0.pooler.supabase.com" failed'
+            )
+            with self.assertRaises(CommandError) as contexto:
+                call_command("verificar_base")
+
+        mensaje = str(contexto.exception)
+        self.assertIn("La base de datos no responde", mensaje)
+        self.assertIn("error_type=OperationalError", mensaje)
+        self.assertIn("modo Session", mensaje)
+        self.assertNotIn("clave", mensaje)
+        self.assertNotIn("postgres.ref", mensaje)

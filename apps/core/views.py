@@ -159,7 +159,7 @@ def busqueda_global(request):
 @require_safe
 @cache_control(no_store=True)
 def healthz(request):
-    """Healthcheck público para Railway y el keepalive: no usa sesión ni datos."""
+    """Healthcheck público para Render y el ping externo: no usa sesión ni datos."""
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")

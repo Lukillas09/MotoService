@@ -52,9 +52,20 @@ def _normalizar_ip(valor):
     return direccion.compressed
 
 
+def _ip_desde_header(request):
+    header = settings.AUTH_RATE_LIMIT_CLIENT_IP_HEADER
+    if not header:
+        return None
+    valor = request.META.get(f"HTTP_{header.upper().replace('-', '_')}", "")
+    if header.lower() == "x-forwarded-for":
+        # El cliente controla las primeras entradas; sólo la última la agrega
+        # el proxy propio. Nunca se usa la primera.
+        valor = valor.rsplit(",", 1)[-1]
+    return valor
+
+
 def obtener_ip_cliente(request):
-    clave_principal = settings.AUTH_RATE_LIMIT_CLIENT_IP_META_KEY
-    candidatos = (request.META.get(clave_principal), request.META.get("REMOTE_ADDR"))
+    candidatos = (_ip_desde_header(request), request.META.get("REMOTE_ADDR"))
     for candidato in candidatos:
         normalizada = _normalizar_ip(candidato)
         if normalizada:
