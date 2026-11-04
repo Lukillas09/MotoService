@@ -37,6 +37,7 @@
       </article>
     {% endfor %}
   </div>
+  {% include "shared/paginacion.html" with objetivo="#servicios-resultados" etiqueta="Páginas de servicios" %}
 {% else %}
   {% if hay_filtros %}
     {% include "shared/empty_state.html" with icon="search" title="No encontramos servicios" text="Probá con otros datos o limpiá los filtros." %}

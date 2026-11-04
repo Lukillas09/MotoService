@@ -5,6 +5,7 @@ from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from apps.core.paginacion import paginar
 from apps.motos.models import Moto
 
 from .forms import ClienteForm
@@ -21,9 +22,14 @@ def cliente_list(request):
         .annotate(
             cantidad_motos=Count("motos", filter=Q(motos__activo=True), distinct=True)
         )
+        # Con GROUP BY Django ignora Meta.ordering: el orden debe ser explícito
+        # para que la paginación no duplique ni saltee filas.
+        .order_by("apellido", "nombre", "pk")
     )
+    pagina = paginar(request, clientes)
     contexto = {
-        "clientes": clientes,
+        "clientes": pagina.object_list,
+        "page_obj": pagina,
         "estado": estado,
         "termino": termino,
     }

@@ -31,6 +31,8 @@ Cards, botones, inputs, badges y navegación usan transiciones de 160 a 220 ms. 
 
 La interfaz conserva foco visible, labels asociados, enlace para saltar al contenido, regiones `aria-live`, textos accesibles para acciones de icono y destinos táctiles de al menos 44 px en las acciones principales. El contraste se apoya en texto oscuro y fondos suaves; el color no es la única identificación porque cada badge mantiene su etiqueta.
 
+Clientes, motos, servicios y alertas comparten `templates/shared/paginacion.html`: un `nav` con `aria-label`, la página actual marcada con `aria-current="page"`, enlaces Anterior/Siguiente y números de 44 px y el texto “Mostrando X–Y de Z”. En móvil sólo quedan Anterior, la página actual y Siguiente. Cada enlace es un `href` normal que conserva búsqueda y filtros; con HTMX reemplaza únicamente el contenedor de resultados y actualiza la URL. HTMX no guarda historial en `localStorage`, así que volver atrás recarga la página completa desde el servidor.
+
 ## Guía de uso
 
 `/guia/` es un centro de ayuda privado integrado en el shell normal. Está disponible desde la sidebar y desde “Más” en móvil. La portada presenta diez categorías en cards y un filtro en JavaScript vanilla sobre títulos, descripciones y palabras clave; sin JavaScript todas las categorías y tutoriales siguen siendo enlaces normales.
@@ -45,4 +47,4 @@ Mi cuenta reutiliza el shell privado y agrupa identidad, rol, perfil y cambio de
 
 ## PWA y privacidad
 
-El manifest ofrece iconos PNG de 192 y 512 px, variantes maskable en ambos tamaños y Apple Touch Icon. El service worker `motoservice-static-v13` precarga únicamente CSS, JavaScript, manifest e imágenes propias. Sólo responde desde caché a rutas bajo `/static/`; las páginas autenticadas y los datos privados, incluidas `/guia/`, `/usuarios/`, `/cuenta/` y las vistas de recuperación, siempre dependen de la red y del control de acceso de Django.
+El manifest ofrece iconos PNG de 192 y 512 px, variantes maskable en ambos tamaños y Apple Touch Icon. El service worker `motoservice-static-v14` precarga únicamente CSS, JavaScript, manifest e imágenes propias. Sólo responde desde caché a rutas bajo `/static/`; las páginas autenticadas y los datos privados, incluidas `/guia/`, `/usuarios/`, `/cuenta/` y las vistas de recuperación, siempre dependen de la red y del control de acceso de Django.

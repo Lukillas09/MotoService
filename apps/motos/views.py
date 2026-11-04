@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from apps.clientes.models import Cliente
+from apps.core.paginacion import paginar
 from apps.mantenimientos.services import obtener_estados_moto
 from apps.notificaciones.services import superponer_estados_moto
 from apps.servicios.models import Servicio
@@ -31,7 +32,13 @@ def moto_list(request):
         .select_related("cliente")
         .buscar(termino)
     )
-    contexto = {"motos": motos, "estado": estado, "termino": termino}
+    pagina = paginar(request, motos)
+    contexto = {
+        "motos": pagina.object_list,
+        "page_obj": pagina,
+        "estado": estado,
+        "termino": termino,
+    }
 
     if request.headers.get("HX-Request") == "true":
         return render(request, "motos/partials/lista.html", contexto)

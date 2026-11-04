@@ -32,6 +32,7 @@
       </div>
     {% endfor %}
   </div>
+  {% include "shared/paginacion.html" with objetivo="#clientes-results" etiqueta="Páginas de clientes" %}
 {% else %}
   <div class="empty-state card">
     <div class="card-body p-4 p-md-5 text-center">

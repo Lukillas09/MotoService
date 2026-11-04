@@ -142,9 +142,12 @@ PASSWORD_RESET_IP_MAX_ATTEMPTS=10
 PASSWORD_RESET_IDENTIFIER_MAX_ATTEMPTS=5
 PASSWORD_RESET_WINDOW_SECONDS=3600
 TEST_DATABASE_URL=
+LISTADO_POR_PAGINA=25
 ```
 
 `WHATSAPP_DEFAULT_COUNTRY_CODE` se usa para normalizar teléfonos sin prefijo internacional y `TALLER_NOMBRE` personaliza el mensaje precargado. En producción, `SECRET_KEY` y `DATABASE_URL` son obligatorias; `SECRET_KEY=change-me` se rechaza.
+
+`LISTADO_POR_PAGINA` define cuántos registros muestran por página los listados de clientes, motos, servicios y alertas (entero positivo, 25 por defecto).
 
 Los seis valores `*_MAX_ATTEMPTS` y `*_WINDOW_SECONDS` controlan las ventanas del login normal, el login del admin y la recuperación. Deben ser enteros positivos. Los contadores se guardan en PostgreSQL con sujetos HMAC, vencen por ventana y pueden purgarse sin un worker mediante `python manage.py limpiar_limites_autenticacion`.
 

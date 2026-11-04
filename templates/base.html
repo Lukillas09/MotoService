@@ -7,6 +7,8 @@
   <meta name="theme-color" content="#075ee5">
   <meta name="color-scheme" content="light">
   <meta name="description" content="Gestión simple para taller de motos">
+  {# Sin caché de historial HTMX: no guarda HTML privado en localStorage y "atrás" recarga la página completa en vez de pedir un parcial. #}
+  <meta name="htmx-config" content='{"historyCacheSize": 0, "refreshOnHistoryMiss": true}'>
   <link rel="manifest" href="{% static 'manifest.webmanifest' %}">
   <link rel="icon" href="{% static 'icons/favicon-32.png' %}" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" sizes="180x180" href="{% static 'icons/apple-touch-icon.png' %}">
