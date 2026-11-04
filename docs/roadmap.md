@@ -47,3 +47,7 @@ Refuerzo sin migraciones del historial de mantenimiento y contacto: la edición 
 ## Mejora técnica Fase 1 — Seguridad, integridad y concurrencia — Implementada
 
 Rate limiting persistente para login y recuperación, unicidad definitiva del email normalizado en PostgreSQL, orden explícito de locks entre Cliente, Moto, Servicio, Mantenimiento y Seguimiento, y exportaciones completas limitadas a Propietarios. No agrega Redis, workers, servicios externos ni dependencias.
+
+## Mejora técnica Fase 2 — Listados, CI, logging y arranque robusto — Implementada
+
+Paginación accesible y compartida en clientes, motos, servicios y alertas (`LISTADO_POR_PAGINA`, filtros conservados, fallback sin JavaScript y reemplazo parcial con HTMX), con orden determinístico por PK. CI en GitHub Actions sobre `postgres:17` que ejecuta también los tests de concurrencia antes omitidos. `LOGGING` a stdout con `LOG_LEVEL`, sin datos sensibles. Despliegue en Railway con `collectstatic` en build, `migrate` en pre-deploy, Gunicorn configurable, healthcheck público `/healthz/` y keepalive opcional de Supabase desde GitHub Actions. No agrega Redis, workers, servicios externos ni dependencias.
