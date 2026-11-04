@@ -22,13 +22,27 @@ La configuración de producción exige `SECRET_KEY` y `DATABASE_URL`, mantiene `
 
 WhiteNoise sirve los estáticos generados por `collectstatic` con el backend comprimido y con manifiesto configurado mediante `STORAGES`. El service worker se publica desde la raíz requerida por su alcance, pero sólo intercepta solicitudes GET bajo `/static/`. Un middleware central marca el HTML autenticado como `private, no-store` sin modificar estáticos, manifest, service worker, login público ni descargas con política propia. HSTS se habilitará al cerrar el despliegue, después de confirmar el dominio y HTTPS de extremo a extremo.
 
-`LOGGING` envía todo a stdout, que Railway conserva sin servicios extra, con el formato `fecha nivel logger mensaje`. `LOG_LEVEL` regula `django` y los loggers propios bajo `apps`; `django.request` y `django.security` se mantienen en `WARNING` o más, de modo que un 500 se registra con su traceback aunque no exista `ADMINS`. Los mensajes propios sólo llevan identificadores técnicos (endpoint, clase de error, código HTTP o del proveedor, `usuario_id`) y nunca cuerpos de email, tokens, contraseñas, destinatarios ni secretos. En tests el nivel por defecto es `WARNING` y la consola usa `NullHandler`; los registros se verifican con `assertLogs`.
-
 La versión oficial de la aplicación se define explícitamente en `config/version.py` y llega a los templates mediante un context processor de `core`. No depende de Git ni del filesystem del contenedor, y los tags publicados deben coincidir con esa fuente de verdad.
 
 La arquitectura evita Redis, Celery, servicios adicionales y frontend separado mientras no exista una necesidad concreta. Esto reduce costos, complejidad operativa y mantenimiento.
 
-Las vistas privadas usan Django Auth. Los listados y filtros conservan un fallback HTTP normal y HTMX se limita a reemplazar resultados o mostrar el contexto de la moto seleccionada.
+Las vistas privadas usan Django Auth. Los listados y filtros conservan un fallback HTTP normal y HTMX se limita a reemplazar resultados o mostrar el contexto de la moto seleccionada. Clientes, motos, servicios y alertas se paginan con `Paginator.get_page` (`LISTADO_POR_PAGINA`, 25 por defecto); cada QuerySet tiene orden explícito con desempate por PK y las alertas, calculadas en memoria, se paginan después de filtrar y ordenar sin alterar los conteos del encabezado ni del dashboard. HTMX no conserva historial en `localStorage`: volver atrás recarga la página completa desde el servidor.
+
+### Arranque en Railway
+
+`railway.json` es la única definición del despliegue. `collectstatic` corre en el build, porque el pre-deploy se ejecuta en un contenedor aparte cuyo filesystem no llega al servicio; `migrate` corre como `preDeployCommand`, y `startCommand` sólo inicia Gunicorn con `gunicorn.conf.py`. Así, una base caída o un Supabase pausado no impiden arrancar ni generan un loop de reinicios: un deploy nuevo falla en el pre-deploy o en el healthcheck y Railway mantiene la versión anterior; un servicio ya activo sigue en pie y responde 503 en `/healthz/` hasta que la base vuelve.
+
+`/healthz/` es una vista de `core` pública, `GET`/`HEAD`, exenta de CSRF y fuera del rate limiting, que ejecuta `SELECT 1` y devuelve 200 o 503 con `Cache-Control: no-store` y sin datos del taller. El middleware de caché privada revisa el tipo de respuesta antes que el usuario, de modo que respuestas que no son HTML no cargan la sesión. El healthcheck interno de Railway entra por HTTP con host `healthcheck.railway.app`: producción agrega ese host a `ALLOWED_HOSTS` (el edge público no enruta ese host al servicio) y exime sólo `^healthz/$` de `SECURE_SSL_REDIRECT`. La conexión usa `connect_timeout=10` para que una base inaccesible responda 503 rápido en lugar de agotar el timeout del worker.
+
+Gunicorn escucha en `0.0.0.0:$PORT` con workers, timeout y graceful timeout configurables por entorno (2, 60 s y 30 s por defecto). Su access log va a stdout sin IP, referer, user agent ni query string, y una clase de logger propia reemplaza UID y token de `/accounts/reset/…/…/` por `<oculto>`.
+
+### Keepalive de Supabase
+
+Supabase pausa los proyectos gratuitos tras un período sin actividad. Sin infraestructura nueva, `.github/workflows/keepalive.yml` hace cada 3 días un `GET` a la URL de la variable de repositorio `HEALTHCHECK_URL`; cada consulta ejecuta `SELECT 1` en la base. Si la variable no está definida, el job termina sin error; si la app responde 503 o no responde, el job falla y GitHub lo notifica. GitHub desactiva los workflows programados de repositorios sin actividad durante 60 días, así que conviene revisar la pestaña Actions si el repo queda quieto mucho tiempo. También puede ejecutarse a mano con `workflow_dispatch`.
+
+### Logging
+
+`LOGGING` envía todo a stdout, que Railway conserva sin servicios extra, con el formato `fecha nivel logger mensaje`. `LOG_LEVEL` regula `django` y los loggers propios bajo `apps`; `django.request` y `django.security` se mantienen en `WARNING` o más, de modo que un 500 se registra con su traceback aunque no exista `ADMINS`. Los mensajes propios sólo llevan identificadores técnicos (endpoint, clase de error, código HTTP o del proveedor, `usuario_id`) y nunca cuerpos de email, tokens, contraseñas, destinatarios ni secretos. En tests el nivel por defecto es `WARNING` y la consola usa `NullHandler`; los registros se verifican con `assertLogs`.
 
 ## Concurrencia e integridad operativa
 

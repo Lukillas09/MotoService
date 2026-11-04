@@ -25,6 +25,13 @@ class PrivateHtmlNoStoreMiddleware:
         return response
 
     def _debe_evitar_cache(self, request, response):
+        # El tipo se revisa antes que el usuario: así las respuestas que no son
+        # HTML (como /healthz/) no cargan la sesión ni consultan la base.
+        content_type = response.headers.get("Content-Type", "")
+        media_type = content_type.partition(";")[0].strip().lower()
+        if media_type != "text/html":
+            return False
+
         usuario = getattr(request, "user", None)
         if not usuario or not usuario.is_authenticated:
             return False
@@ -47,6 +54,4 @@ class PrivateHtmlNoStoreMiddleware:
         ):
             return False
 
-        content_type = response.headers.get("Content-Type", "")
-        media_type = content_type.partition(";")[0].strip().lower()
-        return media_type == "text/html"
+        return True

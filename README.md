@@ -104,6 +104,7 @@ Rutas principales:
 - `http://127.0.0.1:8000/cuenta/`
 - `http://127.0.0.1:8000/usuarios/` (solo Propietario)
 - `http://127.0.0.1:8000/admin/`
+- `http://127.0.0.1:8000/healthz/` (público, sin datos)
 
 Las vistas operativas requieren iniciar sesión en `/accounts/login/`. El repositorio no incluye credenciales predeterminadas.
 
@@ -189,7 +190,7 @@ Las pruebas marcadas como PostgreSQL se omiten honestamente con SQLite. Para eje
 ## Estructura
 
 ```text
-.github/workflows/      CI de tests sobre PostgreSQL
+.github/workflows/      CI de tests sobre PostgreSQL y keepalive de /healthz/
 config/                 Configuración Django y settings por entorno
 apps/                   Apps internas del proyecto
 templates/              Templates globales
@@ -199,7 +200,18 @@ docs/                   Documentación de producto y arquitectura
 
 ## Railway
 
-El proyecto incluye `Procfile` y `railway.json`. En Railway se deben configurar:
+`railway.json` es la única fuente de verdad del despliegue (no hay `Procfile`):
+
+- **build**: `collectstatic` con settings de producción, así los estáticos quedan dentro de la imagen. Railway expone las variables del servicio durante el build, por eso `SECRET_KEY`, `DATABASE_URL` y las de Brevo ya deben existir.
+- **preDeployCommand**: `migrate`. Si la base no responde, el deploy nuevo se cancela y la versión anterior sigue atendiendo.
+- **startCommand**: sólo `gunicorn --config gunicorn.conf.py`. Arrancar no requiere base de datos, por lo que una base pausada ya no produce un loop de reinicios.
+- **healthcheckPath** `/healthz/` con `healthcheckTimeout` de 120 s: Railway sólo pasa el tráfico al deploy nuevo cuando responde 200.
+
+`/healthz/` es público, no usa sesión, CSRF ni rate limiting, responde `Cache-Control: no-store` y devuelve únicamente `{"status": "ok", "database": "ok"}` (200) o `{"status": "error", "database": "unavailable"}` (503) según un `SELECT 1`. La conexión a PostgreSQL usa `connect_timeout=10`, ajustable con `?connect_timeout=` en `DATABASE_URL`.
+
+`gunicorn.conf.py` escucha en `0.0.0.0:$PORT` y toma `GUNICORN_WORKERS` (2), `GUNICORN_TIMEOUT` (60 s) y `GUNICORN_GRACEFUL_TIMEOUT` (30 s) del entorno. El access log sale por stdout sin IP, referer, user agent ni query string, y oculta el token de los enlaces de invitación y recuperación.
+
+En Railway se deben configurar:
 
 - `DJANGO_SETTINGS_MODULE=config.settings.production`
 - `SECRET_KEY`
@@ -218,8 +230,11 @@ El proyecto incluye `Procfile` y `railway.json`. En Railway se deben configurar:
 - `PASSWORD_RESET_IP_MAX_ATTEMPTS`
 - `PASSWORD_RESET_IDENTIFIER_MAX_ATTEMPTS`
 - `PASSWORD_RESET_WINDOW_SECONDS`
+- opcionales: `LOG_LEVEL`, `LISTADO_POR_PAGINA`, `GUNICORN_WORKERS`, `GUNICORN_TIMEOUT`, `GUNICORN_GRACEFUL_TIMEOUT`
 
-La configuración de producción fuerza `DEBUG=False`, exige PostgreSQL con SSL, confía en el proxy HTTPS de Railway, redirige a HTTPS y usa cookies seguras. El comando de inicio ejecuta migraciones, `collectstatic` y luego Gunicorn.
+La configuración de producción fuerza `DEBUG=False`, exige PostgreSQL con SSL, confía en el proxy HTTPS de Railway, redirige a HTTPS y usa cookies seguras. El healthcheck interno de Railway llega por HTTP con el host `healthcheck.railway.app`: ese host se agrega a `ALLOWED_HOSTS` y `/healthz/` está en `SECURE_REDIRECT_EXEMPT`; el resto del sitio sigue redirigiendo a HTTPS.
+
+Para que Supabase no pause la base por inactividad, `.github/workflows/keepalive.yml` consulta `/healthz/` cada 3 días. Requiere la variable de repositorio `HEALTHCHECK_URL` (por ejemplo `https://<dominio>/healthz/`); sin ella el job termina sin fallar. Los detalles están en [docs/architecture.md](docs/architecture.md).
 
 Railway no necesita `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS` ni `EMAIL_USE_SSL`: MotoService usa la API HTTPS de Brevo y no SMTP en producción. `BREVO_API_KEY` se configura únicamente como variable del servicio y nunca debe copiarse al repositorio, logs ni templates. Los enlaces de email se construyen desde el request y respetan el proxy HTTPS; no contienen un dominio hardcodeado.
 

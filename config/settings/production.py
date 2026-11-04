@@ -46,13 +46,23 @@ DATABASES = {  # noqa: F405
         ssl_require=True,
     )
 }
+# Si Supabase está pausado o no responde, /healthz/ devuelve 503 en segundos en
+# lugar de colgar al worker. Puede ajustarse con ?connect_timeout= en la URL.
+DATABASES["default"].setdefault("OPTIONS", {}).setdefault("connect_timeout", 10)
 
-ALLOWED_HOSTS = env_list("ALLOWED_HOSTS")  # noqa: F405
+# Railway hace el healthcheck de deploy con este Host, por HTTP y sin pasar
+# por su proxy; el edge público no enruta ese Host hacia el servicio.
+RAILWAY_HEALTHCHECK_HOST = "healthcheck.railway.app"
+ALLOWED_HOSTS = [  # noqa: F405
+    *env_list("ALLOWED_HOSTS"),  # noqa: F405
+    RAILWAY_HEALTHCHECK_HOST,
+]
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")  # noqa: F405
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 AUTH_RATE_LIMIT_CLIENT_IP_META_KEY = "HTTP_X_REAL_IP"
 SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", True)  # noqa: F405
+SECURE_REDIRECT_EXEMPT = [r"^healthz/$"]
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True

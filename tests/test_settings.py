@@ -1,12 +1,18 @@
+import importlib.util
 import json
 import os
 from pathlib import Path
+import re
+import runpy
 import subprocess
 import sys
+import types
+from unittest import skipUnless
 from unittest.mock import patch
 
 from django.conf import settings
 from django.test import SimpleTestCase
+from django.urls import reverse
 
 from config.settings.base import env_bool
 
@@ -306,25 +312,175 @@ print(json.dumps({
 
 
 class ProductionDeploymentTests(SimpleTestCase):
-    def test_entrypoints_preparan_django_antes_de_gunicorn(self):
+    def test_railway_separa_build_predeploy_y_arranque(self):
         base_dir = Path(settings.BASE_DIR)
-        railway_command = json.loads(
-            (base_dir / "railway.json").read_text(encoding="utf-8")
-        )["deploy"]["startCommand"]
-        procfile = (base_dir / "Procfile").read_text(encoding="utf-8").strip()
+        config = json.loads((base_dir / "railway.json").read_text(encoding="utf-8"))
+        build = config["build"]
+        deploy = config["deploy"]
 
-        self.assertTrue(procfile.startswith("web:"))
-        procfile_command = procfile.removeprefix("web:").strip()
-        self.assertEqual(procfile_command, railway_command)
-        self.assertIn(
-            "collectstatic --noinput --settings=config.settings.production",
-            procfile_command,
+        self.assertEqual(
+            build["buildCommand"],
+            "python manage.py collectstatic --noinput --settings=config.settings.production",
         )
-        self.assertLess(
-            procfile_command.index("manage.py migrate"),
-            procfile_command.index("manage.py collectstatic"),
+        self.assertEqual(
+            deploy["preDeployCommand"],
+            ["python manage.py migrate --noinput --settings=config.settings.production"],
         )
-        self.assertLess(
-            procfile_command.index("manage.py collectstatic"),
-            procfile_command.index("gunicorn"),
+        # Si la base no responde, Gunicorn igual arranca y /healthz/ informa 503.
+        self.assertEqual(deploy["startCommand"], "gunicorn --config gunicorn.conf.py")
+        self.assertEqual(deploy["healthcheckPath"], reverse("core:healthz"))
+        self.assertGreater(deploy["healthcheckTimeout"], 0)
+        self.assertGreaterEqual(deploy["restartPolicyMaxRetries"], 5)
+        # railway.json es la única fuente de verdad del arranque.
+        self.assertFalse((base_dir / "Procfile").exists())
+
+    def probe_production_settings(self, database_url):
+        environment = os.environ.copy()
+        environment.update(
+            DJANGO_SETTINGS_MODULE="config.settings.production",
+            SECRET_KEY="test-only-secret-key",
+            DATABASE_URL=database_url,
+            ALLOWED_HOSTS="motoservice.example.test",
+            BREVO_API_KEY="test-only-brevo-api-key",
+            BREVO_FROM_EMAIL="brevo@example.test",
+            BREVO_FROM_NAME="MotoService",
         )
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                """
+import json
+import django
+django.setup()
+from django.conf import settings
+print(json.dumps({
+    'allowed_hosts': settings.ALLOWED_HOSTS,
+    'redirect_exempt': settings.SECURE_REDIRECT_EXEMPT,
+    'ssl_redirect': settings.SECURE_SSL_REDIRECT,
+    'connect_timeout': settings.DATABASES['default']['OPTIONS']['connect_timeout'],
+}))
+""",
+            ],
+            cwd=Path(settings.BASE_DIR),
+            env=environment,
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=True,
+        )
+        return json.loads(result.stdout.strip().splitlines()[-1])
+
+    def test_produccion_admite_healthcheck_interno_sin_redirigir(self):
+        produccion = self.probe_production_settings(
+            "postgresql://test:test@localhost:5432/test"
+        )
+        exentas = produccion["redirect_exempt"]
+
+        self.assertEqual(
+            produccion["allowed_hosts"],
+            ["motoservice.example.test", "healthcheck.railway.app"],
+        )
+        self.assertTrue(produccion["ssl_redirect"])
+        self.assertTrue(any(re.search(patron, "healthz/") for patron in exentas))
+        self.assertFalse(any(re.search(patron, "clientes/") for patron in exentas))
+        self.assertEqual(produccion["connect_timeout"], 10)
+
+    def test_connect_timeout_puede_ajustarse_desde_la_url(self):
+        produccion = self.probe_production_settings(
+            "postgresql://test:test@localhost:5432/test?connect_timeout=3"
+        )
+
+        self.assertEqual(int(produccion["connect_timeout"]), 3)
+
+
+class GunicornConfigTests(SimpleTestCase):
+    def cargar_config(self, **variables):
+        """Ejecuta gunicorn.conf.py con un Logger mínimo: Gunicorn no corre en Windows."""
+
+        class LoggerBase:
+            def atoms(self, resp, req, environ, request_time):
+                return {"U": environ["PATH_INFO"], "q": environ.get("QUERY_STRING", "")}
+
+        glogging = types.ModuleType("gunicorn.glogging")
+        glogging.Logger = LoggerBase
+        entorno = {
+            clave: valor
+            for clave, valor in os.environ.items()
+            if not clave.startswith("GUNICORN_") and clave not in {"PORT", "LOG_LEVEL"}
+        }
+        entorno.update(variables)
+        with (
+            patch.dict(sys.modules, {"gunicorn.glogging": glogging}),
+            patch.dict(os.environ, entorno, clear=True),
+        ):
+            return runpy.run_path(str(Path(settings.BASE_DIR) / "gunicorn.conf.py"))
+
+    def test_valores_por_defecto(self):
+        config = self.cargar_config()
+
+        self.assertEqual(config["wsgi_app"], "config.wsgi:application")
+        self.assertEqual(config["bind"], "0.0.0.0:8000")
+        self.assertEqual(config["workers"], 2)
+        self.assertEqual(config["timeout"], 60)
+        self.assertEqual(config["graceful_timeout"], 30)
+        self.assertEqual(config["accesslog"], "-")
+        self.assertEqual(config["loglevel"], "info")
+
+    def test_puerto_workers_y_timeouts_vienen_del_entorno(self):
+        config = self.cargar_config(
+            PORT="4321",
+            GUNICORN_WORKERS="3",
+            GUNICORN_TIMEOUT="90",
+            GUNICORN_GRACEFUL_TIMEOUT="20",
+            LOG_LEVEL="WARNING",
+        )
+
+        self.assertEqual(config["bind"], "0.0.0.0:4321")
+        self.assertEqual(config["workers"], 3)
+        self.assertEqual(config["timeout"], 90)
+        self.assertEqual(config["graceful_timeout"], 20)
+        self.assertEqual(config["loglevel"], "warning")
+
+    def test_rechaza_workers_no_positivos(self):
+        with self.assertRaises(ValueError):
+            self.cargar_config(GUNICORN_WORKERS="0")
+
+    def test_access_log_no_registra_query_ip_referer_ni_tokens(self):
+        config = self.cargar_config()
+        logger = config["logger_class"]()
+
+        def ruta_registrada(path):
+            return logger.atoms(None, None, {"PATH_INFO": path}, None)["U"]
+
+        for atomo in ("%(q)s", "%(r)s", "%(h)s", "%(f)s", "%(a)s"):
+            self.assertNotIn(atomo, config["access_log_format"])
+        self.assertIn("%(U)s", config["access_log_format"])
+        self.assertEqual(
+            ruta_registrada("/accounts/reset/MQ/abc-123-token/"),
+            "/accounts/reset/<oculto>/",
+        )
+        self.assertEqual(ruta_registrada("/clientes/"), "/clientes/")
+
+    @skipUnless(importlib.util.find_spec("fcntl"), "Gunicorn sólo corre en POSIX.")
+    def test_gunicorn_real_acepta_la_configuracion(self):
+        environment = os.environ.copy()
+        environment["DJANGO_SETTINGS_MODULE"] = "config.settings.test"
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "gunicorn",
+                "--check-config",
+                "--config",
+                "gunicorn.conf.py",
+            ],
+            cwd=Path(settings.BASE_DIR),
+            env=environment,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
