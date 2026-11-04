@@ -6,6 +6,9 @@ from django.core.exceptions import ImproperlyConfigured
 from .base import *  # noqa: F403
 
 
+# Los tests nunca toman DATABASE_URL: base.py carga .env y una URL de
+# producción terminaría creando bases de test en Supabase. PostgreSQL se activa
+# sólo con TEST_DATABASE_URL (el CI la apunta a su service postgres:17).
 TEST_DATABASE_URL = (os.getenv("TEST_DATABASE_URL") or "").strip()
 if TEST_DATABASE_URL:
     TEST_DATABASE = dj_database_url.parse(
@@ -24,6 +27,12 @@ else:
             "NAME": ":memory:",
         }
     }
+
+LOG_LEVEL = env_log_level("LOG_LEVEL", "WARNING")  # noqa: F405
+LOGGING = construir_logging(LOG_LEVEL)  # noqa: F405
+# Los 403/404/429 esperados no ensucian la salida; los tests que verifican
+# registros usan assertLogs, que agrega su propio handler.
+LOGGING["handlers"]["console"] = {"class": "logging.NullHandler"}
 
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"

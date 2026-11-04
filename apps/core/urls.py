@@ -10,4 +10,5 @@ urlpatterns = [
     path("buscar/", views.busqueda_global, name="search"),
     path("guia/", views.guia_index, name="guia"),
     path("guia/<slug:slug>/", views.guia_tema, name="guia_tema"),
+    path("healthz/", views.healthz, name="healthz"),
 ]

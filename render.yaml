@@ -1,0 +1,47 @@
+# Blueprint de Render: única definición del despliegue de MotoService.
+# Plan free: sin shell, sin pre-deploy ni discos; el servicio se duerme tras
+# 15 minutos sin tráfico. Ver "Hosting gratuito" en el README.
+services:
+  - type: web
+    name: motoservice
+    runtime: python
+    plan: free
+    # No se puede cambiar después de crear el servicio: elegí la región más
+    # cercana al proyecto de Supabase.
+    region: oregon
+    branch: main
+    # Despliega cada commit de main cuando el CI de GitHub Actions pasa.
+    autoDeployTrigger: checksPass
+    buildCommand: >-
+      pip install -r requirements.txt &&
+      python manage.py collectstatic --noinput --settings=config.settings.production
+    # Sin pre-deploy en free: migrate corre al arrancar. verificar_base corta
+    # en segundos con un mensaje claro si la base no responde.
+    startCommand: >-
+      python manage.py verificar_base --settings=config.settings.production &&
+      python manage.py migrate --noinput --settings=config.settings.production &&
+      exec gunicorn -c gunicorn.conf.py config.wsgi:application
+    healthCheckPath: /healthz/
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.18
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.production
+      # Render fija 1 por defecto en planes de 512 MB; 2 workers sync entran.
+      - key: WEB_CONCURRENCY
+        value: "2"
+      - key: SECRET_KEY
+        sync: false
+      # Pooler de Supabase en modo Session: *.pooler.supabase.com:5432.
+      - key: DATABASE_URL
+        sync: false
+      - key: ALLOWED_HOSTS
+        sync: false
+      - key: CSRF_TRUSTED_ORIGINS
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_FROM_EMAIL
+        sync: false
+      - key: BREVO_FROM_NAME
+        sync: false

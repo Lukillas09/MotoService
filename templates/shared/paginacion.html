@@ -1,0 +1,44 @@
+{% load paginacion %}
+{% comment %}
+Paginación compartida de listados.
+Parámetros: page_obj, objetivo (selector del contenedor de resultados),
+swap (opcional, "innerHTML" por defecto) y etiqueta (aria-label del nav).
+Cada enlace tiene href normal para funcionar sin JavaScript.
+{% endcomment %}
+{% if page_obj.paginator.count %}
+<nav class="pagination-bar" aria-label="{{ etiqueta|default:'Paginación' }}"
+     hx-target="{{ objetivo }}" hx-swap="{{ swap|default:'innerHTML' }} show:{{ objetivo }}:top" hx-push-url="true" hx-indicator="#global-loading">
+  <p class="pagination-summary">Mostrando {{ page_obj.start_index }}–{{ page_obj.end_index }} de {{ page_obj.paginator.count }}</p>
+  {% if page_obj.has_other_pages %}
+    <ul class="pagination-list">
+      <li class="pagination-step">
+        {% if page_obj.has_previous %}
+          {% url_pagina page_obj.previous_page_number as url_anterior %}
+          <a class="pagination-link" href="{{ url_anterior }}" hx-get="{{ url_anterior }}" rel="prev">{% include "shared/icon.html" with name="chevron-left" %}<span>Anterior</span></a>
+        {% else %}
+          <span class="pagination-link disabled" aria-disabled="true">{% include "shared/icon.html" with name="chevron-left" %}<span>Anterior</span></span>
+        {% endif %}
+      </li>
+      {% paginas_visibles page_obj as paginas %}
+      {% for numero in paginas %}
+        {% if numero == page_obj.paginator.ELLIPSIS %}
+          <li class="pagination-gap" aria-hidden="true">…</li>
+        {% else %}
+          {% url_pagina numero as url_numero %}
+          <li class="pagination-page{% if numero == page_obj.number %} is-current{% endif %}">
+            <a class="pagination-link{% if numero == page_obj.number %} active{% endif %}" href="{{ url_numero }}" hx-get="{{ url_numero }}" aria-label="Página {{ numero }}"{% if numero == page_obj.number %} aria-current="page"{% endif %}>{{ numero }}</a>
+          </li>
+        {% endif %}
+      {% endfor %}
+      <li class="pagination-step">
+        {% if page_obj.has_next %}
+          {% url_pagina page_obj.next_page_number as url_siguiente %}
+          <a class="pagination-link" href="{{ url_siguiente }}" hx-get="{{ url_siguiente }}" rel="next"><span>Siguiente</span>{% include "shared/icon.html" with name="chevron-right" %}</a>
+        {% else %}
+          <span class="pagination-link disabled" aria-disabled="true"><span>Siguiente</span>{% include "shared/icon.html" with name="chevron-right" %}</span>
+        {% endif %}
+      </li>
+    </ul>
+  {% endif %}
+</nav>
+{% endif %}

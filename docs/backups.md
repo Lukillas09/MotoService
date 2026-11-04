@@ -89,6 +89,6 @@ No usar `--clean` contra producción como primer paso. Una recuperación real re
 
 ## Custodia y frecuencia
 
-El `.dump` es más sensible que un CSV o Excel. Puede contener datos de clientes, teléfonos, emails, historial, hashes de contraseñas y sesiones de Django. Debe guardarse cifrado o dentro de almacenamiento privado con acceso limitado. No enviarlo por canales públicos, no subirlo al repositorio y no dejarlo permanentemente en Railway.
+El `.dump` es más sensible que un CSV o Excel. Puede contener datos de clientes, teléfonos, emails, historial, hashes de contraseñas y sesiones de Django. Debe guardarse cifrado o dentro de almacenamiento privado con acceso limitado. No enviarlo por canales públicos, no subirlo al repositorio y no dejarlo en Render (el plan free no tiene shell ni discos persistentes: el backup se corre siempre desde una PC controlada).
 
 Realizar backups según el ritmo de cambios del taller y conservar varias copias históricas en ubicaciones controladas, por ejemplo una computadora administrativa, un disco externo y almacenamiento cloud privado. Esta fase no borra copias antiguas ni programa tareas automáticas.

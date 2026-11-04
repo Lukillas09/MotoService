@@ -6,6 +6,7 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
 from apps.clientes.models import normalizar_telefono_busqueda
+from apps.core.paginacion import paginar
 from apps.motos.models import normalizar_patente
 
 from .forms import (
@@ -129,8 +130,12 @@ def alerta_list(request):
             datos.get("seguimiento") or "accionables",
         )
 
+    # El cálculo de alertas es en memoria: se pagina la lista ya filtrada y
+    # ordenada, mientras los conteos del encabezado siguen usando ``resumen``.
+    pagina = paginar(request, alertas)
     contexto = {
-        "alertas": alertas,
+        "alertas": pagina.object_list,
+        "page_obj": pagina,
         "resumen": resumen,
         "filtros": filtros,
         "hay_filtros": any(

@@ -438,7 +438,7 @@ class ProductionReadinessTests(TestCase):
         self.assertIn('url.pathname.startsWith("/static/")', contenido)
         self.assertIn('event.request.method !== "GET"', contenido)
         self.assertIn("url.origin !== self.location.origin", contenido)
-        self.assertIn('const CACHE_NAME = "motoservice-static-v13"', contenido)
+        self.assertIn('const CACHE_NAME = "motoservice-static-v14"', contenido)
         for asset in (
             "/static/icons/ui.svg",
             "/static/js/guide.js",

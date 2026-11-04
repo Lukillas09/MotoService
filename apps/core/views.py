@@ -1,10 +1,16 @@
-from django.contrib.auth.decorators import login_required
+import logging
+
+from django.contrib.auth.decorators import login_not_required, login_required
 from django.contrib.staticfiles import finders
 from django.core.exceptions import PermissionDenied
+from django.db import DatabaseError, connection
 from django.db.models import Count, Q
-from django.http import Http404
+from django.http import Http404, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
+from django.views.decorators.cache import cache_control
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_safe
 
 from apps.clientes.models import Cliente
 from apps.motos.models import Moto
@@ -13,6 +19,9 @@ from apps.servicios.models import Servicio
 from apps.usuarios.roles import es_propietario
 
 from .guia import CAPTURAS, TEMAS
+
+
+logger = logging.getLogger(__name__)
 
 
 def _temas_guia_visibles(usuario):
@@ -143,3 +152,21 @@ def busqueda_global(request):
         "core/search.html",
         {"termino": termino, "clientes": clientes, "motos": motos},
     )
+
+
+@login_not_required
+@csrf_exempt
+@require_safe
+@cache_control(no_store=True)
+def healthz(request):
+    """Healthcheck público para Render y el ping externo: no usa sesión ni datos."""
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+    except DatabaseError as error:
+        logger.warning(
+            "Healthcheck sin base de datos. error_type=%s", type(error).__name__
+        )
+        return JsonResponse({"status": "error", "database": "unavailable"}, status=503)
+    return JsonResponse({"status": "ok", "database": "ok"})

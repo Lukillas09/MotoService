@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import re
 
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
@@ -45,6 +46,65 @@ def env_positive_int(name, default):
     return value
 
 
+def env_http_header(name, default=""):
+    """Nombre de un header HTTP (``CF-Connecting-IP``); vacío significa ninguno."""
+    value = (os.getenv(name) or default).strip()
+    if value and not re.fullmatch(r"[A-Za-z0-9-]+", value):
+        raise ImproperlyConfigured(f"{name} must be an HTTP header name.")
+    return value
+
+
+NIVELES_LOG = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
+
+
+def env_log_level(name, default):
+    value = (os.getenv(name) or default).strip().upper()
+    if value not in NIVELES_LOG:
+        raise ImproperlyConfigured(
+            f"{name} must be one of {', '.join(NIVELES_LOG)}."
+        )
+    return value
+
+
+def construir_logging(nivel):
+    """Logging a stdout para Render/Gunicorn.
+
+    Los mensajes nunca deben incluir cuerpos de email, tokens, contraseñas,
+    destinatarios ni secretos: sólo identificadores técnicos y clases de error.
+    """
+    # django.request registra 4xx como WARNING y 5xx como ERROR; nunca se baja
+    # de WARNING para no volcar información de cada request.
+    if NIVELES_LOG.index(nivel) > NIVELES_LOG.index("WARNING"):
+        nivel_minimo_warning = nivel
+    else:
+        nivel_minimo_warning = "WARNING"
+    consola = {"handlers": ["console"], "propagate": False}
+    return {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "simple": {
+                "format": "{asctime} {levelname} {name} {message}",
+                "style": "{",
+            },
+        },
+        "handlers": {
+            "console": {
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stdout",
+                "formatter": "simple",
+            },
+        },
+        "root": {"handlers": ["console"], "level": "WARNING"},
+        "loggers": {
+            "django": {**consola, "level": nivel},
+            "django.request": {**consola, "level": nivel_minimo_warning},
+            "django.security": {**consola, "level": nivel_minimo_warning},
+            "apps": {**consola, "level": nivel},
+        },
+    }
+
+
 SECRET_KEY = os.getenv("SECRET_KEY", "change-me")
 DEBUG = env_bool("DEBUG", False)
 
@@ -82,7 +142,12 @@ PASSWORD_RESET_IDENTIFIER_MAX_ATTEMPTS = env_positive_int(
 PASSWORD_RESET_WINDOW_SECONDS = env_positive_int(
     "PASSWORD_RESET_WINDOW_SECONDS", 3600
 )
-AUTH_RATE_LIMIT_CLIENT_IP_META_KEY = "REMOTE_ADDR"
+# Header con la IP real del cliente detrás del proxy; vacío usa REMOTE_ADDR.
+AUTH_RATE_LIMIT_CLIENT_IP_HEADER = env_http_header("AUTH_RATE_LIMIT_CLIENT_IP_HEADER")
+LISTADO_POR_PAGINA = env_positive_int("LISTADO_POR_PAGINA", 25)
+
+LOG_LEVEL = env_log_level("LOG_LEVEL", "INFO")
+LOGGING = construir_logging(LOG_LEVEL)
 
 INSTALLED_APPS = [
     "django.contrib.admin",

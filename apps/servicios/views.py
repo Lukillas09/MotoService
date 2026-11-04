@@ -5,6 +5,7 @@ from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
 
+from apps.core.paginacion import paginar
 from apps.motos.models import Moto
 
 from .forms import ServicioFiltroForm, ServicioForm
@@ -53,8 +54,10 @@ def servicio_list(request):
         if datos.get("hasta"):
             servicios = servicios.filter(fecha__lte=datos["hasta"])
 
+    pagina = paginar(request, servicios)
     contexto = {
-        "servicios": servicios,
+        "servicios": pagina.object_list,
+        "page_obj": pagina,
         "filtros": formulario_filtros,
         "hay_filtros": any(
             request.GET.get(campo) for campo in ("q", "estado", "desde", "hasta")

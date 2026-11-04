@@ -1,5 +1,7 @@
 # MotoService
 
+[![Tests](https://github.com/Lukillas09/MotoService/actions/workflows/tests.yml/badge.svg)](https://github.com/Lukillas09/MotoService/actions/workflows/tests.yml)
+
 Aplicación web para la gestión cotidiana de un taller de motos. Usa un monolito Django modular, responsive e instalable como PWA, con PostgreSQL como base oficial y Supabase PostgreSQL en producción.
 
 Las fases 1 a 6 cubren el flujo operativo principal y su interfaz final:
@@ -20,7 +22,7 @@ Versión actual: **v1.0.2**.
 - Django Templates, HTMX y Bootstrap 5
 - PostgreSQL mediante `DATABASE_URL`
 - WhiteNoise y Gunicorn
-- Supabase PostgreSQL y Railway
+- Supabase PostgreSQL (pooler en modo Session) y Render
 - Brevo mediante su SDK oficial y API HTTPS para emails de producción
 - `openpyxl` para la exportación Excel
 
@@ -102,6 +104,7 @@ Rutas principales:
 - `http://127.0.0.1:8000/cuenta/`
 - `http://127.0.0.1:8000/usuarios/` (solo Propietario)
 - `http://127.0.0.1:8000/admin/`
+- `http://127.0.0.1:8000/healthz/` (público, sin datos)
 
 Las vistas operativas requieren iniciar sesión en `/accounts/login/`. El repositorio no incluye credenciales predeterminadas.
 
@@ -142,9 +145,15 @@ PASSWORD_RESET_IP_MAX_ATTEMPTS=10
 PASSWORD_RESET_IDENTIFIER_MAX_ATTEMPTS=5
 PASSWORD_RESET_WINDOW_SECONDS=3600
 TEST_DATABASE_URL=
+LISTADO_POR_PAGINA=25
+LOG_LEVEL=INFO
 ```
 
 `WHATSAPP_DEFAULT_COUNTRY_CODE` se usa para normalizar teléfonos sin prefijo internacional y `TALLER_NOMBRE` personaliza el mensaje precargado. En producción, `SECRET_KEY` y `DATABASE_URL` son obligatorias; `SECRET_KEY=change-me` se rechaza.
+
+`LISTADO_POR_PAGINA` define cuántos registros muestran por página los listados de clientes, motos, servicios y alertas (entero positivo, 25 por defecto).
+
+`LOG_LEVEL` controla el nivel de los loggers `django` y `apps` (`DEBUG`, `INFO`, `WARNING`, `ERROR` o `CRITICAL`; `INFO` por defecto y `WARNING` en tests). Los registros salen por stdout con fecha, nivel, logger y mensaje, así quedan en los logs de Render. `django.request` y `django.security` nunca bajan de `WARNING`, por lo que los errores 500 quedan registrados aunque no haya `ADMINS`. Los logs no incluyen cuerpos de email, tokens, contraseñas, destinatarios ni secretos.
 
 Los seis valores `*_MAX_ATTEMPTS` y `*_WINDOW_SECONDS` controlan las ventanas del login normal, el login del admin y la recuperación. Deben ser enteros positivos. Los contadores se guardan en PostgreSQL con sujetos HMAC, vencen por ventana y pueden purgarse sin un worker mediante `python manage.py limpiar_limites_autenticacion`.
 
@@ -174,9 +183,16 @@ Abrí el enlace de invitación o recuperación que Django imprime en esa misma t
 
 Las pruebas marcadas como PostgreSQL se omiten honestamente con SQLite. Para ejecutarlas, definí `TEST_DATABASE_URL` con credenciales de una instancia local y descartable; Django creará su base de test. La suite rechaza una URL que no sea PostgreSQL.
 
+### Integración continua
+
+`.github/workflows/tests.yml` corre en cada push y pull request con Python 3.13 y un service `postgres:17` propio del job. Define `TEST_DATABASE_URL` hacia ese service, de modo que los tests de concurrencia e índice de email normalizado se ejecutan en vez de omitirse; un paso previo falla si la conexión no es PostgreSQL. El job ejecuta `makemigrations --check --dry-run`, `check`, `check --deploy` con settings de producción y valores ficticios, y la suite completa. La única advertencia esperada de `check --deploy` es `security.W004` (HSTS), que se habilitará al confirmar el dominio definitivo.
+
 ## Estructura
 
 ```text
+.github/workflows/      CI de tests sobre PostgreSQL
+render.yaml             Blueprint de Render (única definición del despliegue)
+gunicorn.conf.py        Configuración de Gunicorn
 config/                 Configuración Django y settings por entorno
 apps/                   Apps internas del proyecto
 templates/              Templates globales
@@ -184,39 +200,91 @@ static/                 CSS, JavaScript, manifest, service worker e iconos PWA
 docs/                   Documentación de producto y arquitectura
 ```
 
-## Railway
+## Render
 
-El proyecto incluye `Procfile` y `railway.json`. En Railway se deben configurar:
+`render.yaml` (Blueprint) es la única definición del despliegue; no hay `Procfile` ni `railway.json`. Define un web service Python en plan free sobre la rama `main`:
 
-- `DJANGO_SETTINGS_MODULE=config.settings.production`
-- `SECRET_KEY`
-- `DATABASE_URL`
-- `ALLOWED_HOSTS`
-- `CSRF_TRUSTED_ORIGINS`
-- `WHATSAPP_DEFAULT_COUNTRY_CODE`
-- `TALLER_NOMBRE`
-- `BREVO_API_KEY`
-- `BREVO_FROM_EMAIL=servicemoto09@gmail.com`
-- `BREVO_FROM_NAME=MotoService`
-- `PASSWORD_RESET_TIMEOUT`
-- `AUTH_LOGIN_IP_MAX_ATTEMPTS`
-- `AUTH_LOGIN_IDENTIFIER_MAX_ATTEMPTS`
-- `AUTH_LOGIN_WINDOW_SECONDS`
-- `PASSWORD_RESET_IP_MAX_ATTEMPTS`
-- `PASSWORD_RESET_IDENTIFIER_MAX_ATTEMPTS`
-- `PASSWORD_RESET_WINDOW_SECONDS`
+- **buildCommand**: instala `requirements.txt` y corre `collectstatic` con settings de producción, así los estáticos quedan en el build. Render expone las variables del servicio durante el build, por eso `SECRET_KEY`, `DATABASE_URL` y las de Brevo ya deben existir.
+- **startCommand**: `verificar_base`, `migrate --noinput` y `exec gunicorn -c gunicorn.conf.py config.wsgi:application`. El plan free no tiene pre-deploy, así que las migraciones corren en cada arranque (también al despertar). `verificar_base` hace `SELECT 1` y, si la base no responde, corta en segundos con un mensaje que indica revisar Supabase y el pooler, sin mostrar la URL.
+- **healthCheckPath** `/healthz/`: Render no pasa tráfico a un deploy nuevo hasta que responde 2xx y, con el servicio activo, lo consulta cada pocos segundos; tras 60 s de fallas reinicia la instancia.
+- **autoDeployTrigger** `checksPass`: cada commit en `main` se despliega cuando el CI de GitHub Actions pasa.
+- `PYTHON_VERSION` fija Python 3.13 (Render exige la versión completa) y `WEB_CONCURRENCY=2` sobrescribe el valor que Render calcula para 512 MB.
 
-La configuración de producción fuerza `DEBUG=False`, exige PostgreSQL con SSL, confía en el proxy HTTPS de Railway, redirige a HTTPS y usa cookies seguras. El comando de inicio ejecuta migraciones, `collectstatic` y luego Gunicorn.
+`/healthz/` es público, no usa sesión, CSRF ni rate limiting, está exento de `SECURE_SSL_REDIRECT` mediante `SECURE_REDIRECT_EXEMPT` y responde `Cache-Control: no-store` con únicamente `{"status": "ok", "database": "ok"}` (200) o `{"status": "error", "database": "unavailable"}` (503) según un `SELECT 1`. Los health checks exitosos no se escriben en el access log. La conexión usa `connect_timeout=10`, ajustable con `?connect_timeout=` en `DATABASE_URL`.
 
-Railway no necesita `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS` ni `EMAIL_USE_SSL`: MotoService usa la API HTTPS de Brevo y no SMTP en producción. `BREVO_API_KEY` se configura únicamente como variable del servicio y nunca debe copiarse al repositorio, logs ni templates. Los enlaces de email se construyen desde el request y respetan el proxy HTTPS; no contienen un dominio hardcodeado.
+`gunicorn.conf.py` escucha en `0.0.0.0:$PORT` (10000 si falta) y toma `WEB_CONCURRENCY` (2), `GUNICORN_TIMEOUT` (60 s) y `GUNICORN_GRACEFUL_TIMEOUT` (30 s) del entorno. El access log sale por stdout sin IP, referer, user agent ni query string, y oculta el token de los enlaces de invitación y recuperación.
 
-Después del deploy, una prueba manual controlada puede ejecutarse desde una shell de Railway, reemplazando únicamente el destinatario de ejemplo:
+La configuración de producción fuerza `DEBUG=False`, exige PostgreSQL con SSL, confía en `X-Forwarded-Proto` del proxy de Render, redirige a HTTPS y usa cookies seguras. Además agrega `RENDER_EXTERNAL_HOSTNAME`, que Render define y usa como Host de sus health checks, a `ALLOWED_HOSTS`.
+
+El rate limiting toma la IP del header indicado en `AUTH_RATE_LIMIT_CLIENT_IP_HEADER` (en producción, `CF-Connecting-IP` por defecto), valida su formato y usa `REMOTE_ADDR` si falta o es inválido. Render pone Cloudflare delante de los web services: Cloudflare sobrescribe `CF-Connecting-IP`, mientras que `X-Forwarded-For` conserva lo que mande el cliente. Si se configura `X-Forwarded-For`, se usa sólo la última entrada (la del proxy), nunca la primera.
+
+Render free no tiene shell. Para probar el envío de email después del deploy, generá una invitación o una recuperación de contraseña hacia una cuenta propia. Producción no necesita `EMAIL_HOST` ni el resto de variables SMTP, que además están bloqueadas en el plan free: MotoService usa la API HTTPS de Brevo. `BREVO_API_KEY` se configura únicamente como variable del servicio y nunca debe copiarse al repositorio, logs ni templates.
+
+## Hosting gratuito
+
+MotoService corre sin costo en **Render free** (aplicación) y **Supabase free** (PostgreSQL).
+
+### Base de datos: pooler de Supabase en modo Session
+
+`DATABASE_URL` debe ser la cadena del **Session pooler** de Supabase (Connect → Connection string → Session pooler):
 
 ```text
-python manage.py shell -c "from django.core.mail import send_mail; print(send_mail('Prueba MotoService', 'Entrega de prueba mediante Brevo HTTPS.', None, ['destinatario@example.com'], fail_silently=False))"
+postgresql://postgres.<project-ref>:<contraseña>@aws-0-<región>.pooler.supabase.com:5432/postgres
 ```
 
-El comando usa las variables ya configuradas en Railway; no hay que escribir ni mostrar la API key.
+- El host directo `db.<project-ref>.supabase.co` del plan free es sólo IPv6 y Render sale por IPv4: no conecta.
+- No uses el **Transaction pooler** (puerto 6543): no conserva la sesión entre sentencias y rompe `LOCK TABLE` y `select_for_update`, de los que dependen las migraciones, el rate limiting y la concurrencia. Producción se niega a arrancar si detecta `*.pooler.supabase.com:6543`.
+- En modo Session cada conexión de Django ocupa una conexión real del pooler. Con 2 workers y `CONN_MAX_AGE=600` se mantienen como máximo 2 conexiones persistentes, muy por debajo del límite del plan free. `CONN_HEALTH_CHECKS` verifica cada conexión antes de reutilizarla, lo que cubre cierres por inactividad del pooler o el reposo de Render.
+
+### Crear el servicio desde el Blueprint
+
+1. Creá el proyecto en Supabase y copiá la cadena del Session pooler.
+2. Si querés, ajustá `region` en `render.yaml` a la región de Render más cercana a Supabase; no se puede cambiar después.
+3. En Render: **New → Blueprint**, conectá el repositorio de GitHub y elegí la rama `main`. Render detecta `render.yaml`.
+4. Render pide los valores marcados con `sync: false`. Ejemplos:
+
+   ```env
+   SECRET_KEY=<cadena aleatoria larga: python -c "import secrets; print(secrets.token_urlsafe(50))">
+   DATABASE_URL=postgresql://postgres.<project-ref>:<contraseña>@aws-0-<región>.pooler.supabase.com:5432/postgres
+   ALLOWED_HOSTS=<app>.onrender.com
+   CSRF_TRUSTED_ORIGINS=https://<app>.onrender.com
+   BREVO_API_KEY=<clave de Brevo>
+   BREVO_FROM_EMAIL=servicemoto09@gmail.com
+   BREVO_FROM_NAME=MotoService
+   ```
+
+   Opcionales, desde Environment en el dashboard: `TALLER_NOMBRE`, `WHATSAPP_DEFAULT_COUNTRY_CODE`, `LOG_LEVEL`, `LISTADO_POR_PAGINA`, `AUTH_RATE_LIMIT_CLIENT_IP_HEADER`, `GUNICORN_TIMEOUT`, `GUNICORN_GRACEFUL_TIMEOUT`, `PASSWORD_RESET_TIMEOUT` y los límites `AUTH_LOGIN_*` / `PASSWORD_RESET_*`.
+5. **Apply**. El primer deploy construye, migra y arranca. Verificá `https://<app>.onrender.com/healthz/`: tiene que responder `{"status": "ok", "database": "ok"}`.
+6. Creá el primer Propietario desde tu PC, porque Render free no tiene shell: con `DATABASE_URL` del Session pooler definida sólo en esa terminal (nunca en un archivo versionado), corré `python manage.py createsuperuser`.
+
+### Ping cada 10 minutos (cron-job.org)
+
+Render free duerme el servicio tras 15 minutos sin tráfico y Supabase free pausa los proyectos inactivos. Un ping externo evita ambas cosas sin infraestructura propia:
+
+1. Creá una cuenta en [cron-job.org](https://cron-job.org) y un cronjob nuevo.
+2. URL: `https://<app>.onrender.com/healthz/`, método GET.
+3. Programación: cada 10 minutos.
+4. Activá las notificaciones por falla: un 503 indica que la base no responde.
+
+Cada ping ejecuta un `SELECT 1`, no crea sesión ni consume el rate limiting y no se escribe en el access log si responde 200.
+
+### Backups
+
+Render free no tiene shell ni discos persistentes, así que el backup con `pg_dump` se corre **desde tu PC** contra Supabase, con las herramientas cliente de PostgreSQL (versión mayor igual o más nueva que la del servidor) y `DATABASE_URL` apuntando al Session pooler sólo en esa terminal:
+
+```text
+python manage.py backup_database --output-dir "/ruta/privada/MotoService"
+```
+
+El procedimiento completo está en [docs/backups.md](docs/backups.md).
+
+### Limitaciones del plan free
+
+- Si el ping falla o se desactiva, el servicio se duerme y el primer acceso tarda alrededor de un minuto, más el tiempo de `migrate` al arrancar.
+- Render da 750 horas de instancia free por mes y por workspace. Un servicio despierto todo el mes usa unas 744 h, así que no conviene tener otro servicio free activo en el mismo workspace.
+- Render puede reiniciar las instancias free en cualquier momento. Cada arranque vuelve a verificar la base y migrar; si la base no responde, el arranque falla hasta que vuelva.
+- Sin discos persistentes: nada del negocio se guarda en el filesystem del servicio.
+- Puertos SMTP bloqueados: no afecta, el email sale por la API HTTPS de Brevo.
 
 ## Exportaciones y backups
 
@@ -228,7 +296,7 @@ El backup real se crea manualmente desde una computadora controlada con las herr
 python manage.py backup_database --output-dir "/ruta/privada/MotoService"
 ```
 
-No se ejecuta desde el navegador ni se guarda permanentemente en Railway. El procedimiento de validación, custodia y restauración segura está en [docs/backups.md](docs/backups.md).
+No se ejecuta desde el navegador ni en Render: se corre desde una PC controlada (ver Hosting gratuito). El procedimiento de validación, custodia y restauración segura está en [docs/backups.md](docs/backups.md).
 
 ## Licencia
 

@@ -21,7 +21,7 @@ from apps.usuarios.rate_limiting import (
     consumir_limites,
     obtener_ip_cliente,
 )
-from config.settings.base import env_positive_int
+from config.settings.base import env_http_header, env_positive_int
 
 
 @override_settings(
@@ -349,28 +349,107 @@ class RateLimitingAutenticacionTests(TestCase):
         self.assertEqual(response.status_code, 503)
         self.assertEqual(parametros_sensibles, ["__ALL__"])
 
-    @override_settings(AUTH_RATE_LIMIT_CLIENT_IP_META_KEY="HTTP_X_REAL_IP")
-    def test_ip_de_railway_se_valida_y_agrupa_ipv6_por_64(self):
+    @override_settings(AUTH_RATE_LIMIT_CLIENT_IP_HEADER="CF-Connecting-IP")
+    def test_ip_del_header_configurado_se_valida_y_agrupa_ipv6_por_64(self):
         factory = RequestFactory()
         primera = factory.post(
             reverse("login"),
-            HTTP_X_REAL_IP="2001:db8:abcd:12::1",
+            HTTP_CF_CONNECTING_IP="2001:db8:abcd:12::1",
             REMOTE_ADDR="198.51.100.1",
         )
         segunda = factory.post(
             reverse("login"),
-            HTTP_X_REAL_IP="2001:db8:abcd:12::ffff",
+            HTTP_CF_CONNECTING_IP="2001:db8:abcd:12::ffff",
             REMOTE_ADDR="198.51.100.2",
         )
         invalida = factory.post(
             reverse("login"),
-            HTTP_X_REAL_IP="valor-invalido",
+            HTTP_CF_CONNECTING_IP="valor-invalido",
             REMOTE_ADDR="198.51.100.3",
         )
+        ausente = factory.post(reverse("login"), REMOTE_ADDR="198.51.100.4")
 
         self.assertEqual(obtener_ip_cliente(primera), "2001:db8:abcd:12::/64")
         self.assertEqual(obtener_ip_cliente(segunda), "2001:db8:abcd:12::/64")
         self.assertEqual(obtener_ip_cliente(invalida), "198.51.100.3")
+        self.assertEqual(obtener_ip_cliente(ausente), "198.51.100.4")
+
+    @override_settings(AUTH_RATE_LIMIT_CLIENT_IP_HEADER="CF-Connecting-IP")
+    def test_x_forwarded_for_falsificado_no_cambia_la_ip_si_se_usa_otro_header(self):
+        request = RequestFactory().post(
+            reverse("login"),
+            HTTP_X_FORWARDED_FOR="203.0.113.99",
+            HTTP_X_REAL_IP="203.0.113.98",
+            HTTP_CF_CONNECTING_IP="198.51.100.20",
+            REMOTE_ADDR="10.0.0.1",
+        )
+
+        self.assertEqual(obtener_ip_cliente(request), "198.51.100.20")
+
+    @override_settings(AUTH_RATE_LIMIT_CLIENT_IP_HEADER="X-Forwarded-For")
+    def test_x_forwarded_for_usa_la_entrada_del_proxy_y_nunca_la_primera(self):
+        factory = RequestFactory()
+        # El cliente manda su propio X-Forwarded-For; el proxy agrega al final.
+        falsificado = factory.post(
+            reverse("login"),
+            HTTP_X_FORWARDED_FOR="203.0.113.99, 1.2.3.4 , 198.51.100.30",
+            REMOTE_ADDR="10.0.0.1",
+        )
+        rotar_primera = factory.post(
+            reverse("login"),
+            HTTP_X_FORWARDED_FOR="203.0.113.100, 198.51.100.30",
+            REMOTE_ADDR="10.0.0.1",
+        )
+        ultima_invalida = factory.post(
+            reverse("login"),
+            HTTP_X_FORWARDED_FOR="198.51.100.30, no-es-ip",
+            REMOTE_ADDR="10.0.0.2",
+        )
+
+        self.assertEqual(obtener_ip_cliente(falsificado), "198.51.100.30")
+        self.assertEqual(obtener_ip_cliente(rotar_primera), "198.51.100.30")
+        self.assertEqual(obtener_ip_cliente(ultima_invalida), "10.0.0.2")
+
+    @override_settings(AUTH_RATE_LIMIT_CLIENT_IP_HEADER="")
+    def test_sin_header_configurado_ignora_headers_del_cliente(self):
+        request = RequestFactory().post(
+            reverse("login"),
+            HTTP_X_FORWARDED_FOR="203.0.113.99",
+            HTTP_CF_CONNECTING_IP="203.0.113.98",
+            REMOTE_ADDR="198.51.100.5",
+        )
+
+        self.assertEqual(obtener_ip_cliente(request), "198.51.100.5")
+
+    @override_settings(AUTH_RATE_LIMIT_CLIENT_IP_HEADER="CF-Connecting-IP")
+    def test_header_falsificado_no_evade_el_limite_por_ip(self):
+        # Rotar X-Forwarded-For no crea buckets nuevos: todos caen en la misma IP.
+        for numero in range(settings.AUTH_LOGIN_IP_MAX_ATTEMPTS):
+            self.client.post(
+                reverse("login"),
+                {"username": f"nadie{numero}", "password": "incorrecta"},
+                HTTP_X_FORWARDED_FOR=f"203.0.113.{numero}",
+                HTTP_CF_CONNECTING_IP="198.51.100.40",
+            )
+
+        response = self.client.post(
+            reverse("login"),
+            {"username": "otra", "password": "incorrecta"},
+            HTTP_X_FORWARDED_FOR="203.0.113.250",
+            HTTP_CF_CONNECTING_IP="198.51.100.40",
+        )
+
+        self.assertEqual(response.status_code, 429)
+
+    def test_configuracion_rechaza_nombres_de_header_invalidos(self):
+        with patch.dict("os.environ", {"HEADER_DE_PRUEBA": "X Real IP"}):
+            with self.assertRaises(ImproperlyConfigured):
+                env_http_header("HEADER_DE_PRUEBA")
+        with patch.dict("os.environ", {"HEADER_DE_PRUEBA": ""}):
+            self.assertEqual(
+                env_http_header("HEADER_DE_PRUEBA", "CF-Connecting-IP"),
+                "CF-Connecting-IP",
+            )
 
     def test_ip_ausente_usa_un_sujeto_estable_en_lugar_de_omitir_el_limite(self):
         request = RequestFactory().post(reverse("login"))

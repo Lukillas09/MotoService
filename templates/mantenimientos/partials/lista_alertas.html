@@ -135,6 +135,7 @@
         {% endwith %}
       {% endfor %}
     </div>
+    {% include "shared/paginacion.html" with objetivo="#lista-alertas" swap="outerHTML" etiqueta="Páginas de alertas" %}
   {% elif not resumen.hay_reglas %}
     <div class="empty-state card"><div class="card-body p-4 text-center"><span class="empty-state-icon">{% include "shared/icon.html" with name="settings" %}</span><h2 class="h5 fw-bold mt-3">Configurá la primera regla</h2><p class="text-secondary">Los tipos existentes se conservaron sin intervalos para no inventar datos del taller.</p><a class="btn btn-primary" href="{% url 'mantenimientos:configuracion' %}">Ir a configuración</a></div></div>
   {% elif resumen.alertas and not hay_filtros %}

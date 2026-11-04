@@ -46,13 +46,38 @@ DATABASES = {  # noqa: F405
         ssl_require=True,
     )
 }
+# Si Supabase está pausado o no responde, migrate y /healthz/ fallan en segundos
+# en lugar de colgar al worker. Puede ajustarse con ?connect_timeout= en la URL.
+DATABASES["default"].setdefault("OPTIONS", {}).setdefault("connect_timeout", 10)
 
+# El pooler de Supabase en modo Transaction (6543) no conserva la sesión entre
+# sentencias: rompe LOCK TABLE y select_for_update. Se exige el modo Session.
+if DATABASES["default"].get("HOST", "").endswith(".pooler.supabase.com") and str(
+    DATABASES["default"].get("PORT")
+) == "6543":
+    raise RuntimeError(
+        "DATABASE_URL must use the Supabase Session pooler (port 5432), "
+        "not the Transaction pooler (port 6543)."
+    )
+
+# Render hace los health checks con el subdominio onrender.com como Host y lo
+# expone en RENDER_EXTERNAL_HOSTNAME; se agrega para no cancelar el deploy si
+# falta en ALLOWED_HOSTS.
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS")  # noqa: F405
+RENDER_EXTERNAL_HOSTNAME = (os.getenv("RENDER_EXTERNAL_HOSTNAME") or "").strip()  # noqa: F405
+if RENDER_EXTERNAL_HOSTNAME and RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")  # noqa: F405
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-AUTH_RATE_LIMIT_CLIENT_IP_META_KEY = "HTTP_X_REAL_IP"
+# Render pone Cloudflare delante de los web services: CF-Connecting-IP lo
+# sobrescribe Cloudflare, mientras que X-Forwarded-For conserva lo que mande
+# el cliente. Ver docs/architecture.md.
+AUTH_RATE_LIMIT_CLIENT_IP_HEADER = env_http_header(  # noqa: F405
+    "AUTH_RATE_LIMIT_CLIENT_IP_HEADER", "CF-Connecting-IP"
+)
 SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", True)  # noqa: F405
+SECURE_REDIRECT_EXEMPT = [r"^healthz/$"]
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True

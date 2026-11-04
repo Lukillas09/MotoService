@@ -1,1 +1,0 @@
-web: python manage.py migrate --noinput --settings=config.settings.production && python manage.py collectstatic --noinput --settings=config.settings.production && exec gunicorn config.wsgi:application
