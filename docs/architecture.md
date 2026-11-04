@@ -22,6 +22,8 @@ La configuración de producción exige `SECRET_KEY` y `DATABASE_URL`, mantiene `
 
 WhiteNoise sirve los estáticos generados por `collectstatic` con el backend comprimido y con manifiesto configurado mediante `STORAGES`. El service worker se publica desde la raíz requerida por su alcance, pero sólo intercepta solicitudes GET bajo `/static/`. Un middleware central marca el HTML autenticado como `private, no-store` sin modificar estáticos, manifest, service worker, login público ni descargas con política propia. HSTS se habilitará al cerrar el despliegue, después de confirmar el dominio y HTTPS de extremo a extremo.
 
+`LOGGING` envía todo a stdout, que Railway conserva sin servicios extra, con el formato `fecha nivel logger mensaje`. `LOG_LEVEL` regula `django` y los loggers propios bajo `apps`; `django.request` y `django.security` se mantienen en `WARNING` o más, de modo que un 500 se registra con su traceback aunque no exista `ADMINS`. Los mensajes propios sólo llevan identificadores técnicos (endpoint, clase de error, código HTTP o del proveedor, `usuario_id`) y nunca cuerpos de email, tokens, contraseñas, destinatarios ni secretos. En tests el nivel por defecto es `WARNING` y la consola usa `NullHandler`; los registros se verifican con `assertLogs`.
+
 La versión oficial de la aplicación se define explícitamente en `config/version.py` y llega a los templates mediante un context processor de `core`. No depende de Git ni del filesystem del contenedor, y los tags publicados deben coincidir con esa fuente de verdad.
 
 La arquitectura evita Redis, Celery, servicios adicionales y frontend separado mientras no exista una necesidad concreta. Esto reduce costos, complejidad operativa y mantenimiento.

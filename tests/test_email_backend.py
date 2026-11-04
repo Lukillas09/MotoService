@@ -306,6 +306,17 @@ class BrevoEmailBackendTests(SimpleTestCase):
             ],
         )
 
+    def assertLogSinDatosSensibles(self, logs):
+        log_output = " ".join(logs.output)
+        self.assertIn("provider=brevo", log_output)
+        for sensible in (
+            "test-only-brevo-api-key",
+            "persona@example.test",
+            "Contenido sensible",
+            "Asunto",
+        ):
+            self.assertNotIn(sensible, log_output)
+
     def test_propaga_error_sanitizado_cuando_fail_silently_es_false(self):
         class ErrorProveedorPrueba(Exception):
             status_code = 403
@@ -323,11 +334,16 @@ class BrevoEmailBackendTests(SimpleTestCase):
             to=["persona@example.test"],
         )
 
-        with self.assertRaisesMessage(
-            BrevoEmailDeliveryError,
-            "Email delivery through Brevo failed.",
-        ) as raised:
+        with (
+            self.assertLogs("apps.core.email_backends", level="WARNING") as logs,
+            self.assertRaisesMessage(
+                BrevoEmailDeliveryError,
+                "Email delivery through Brevo failed.",
+            ) as raised,
+        ):
             BrevoEmailBackend(fail_silently=False).send_messages([message])
+
+        self.assertLogSinDatosSensibles(logs)
 
         self.assertIsNone(raised.exception.__cause__)
         self.assertTrue(raised.exception.__suppress_context__)
@@ -353,9 +369,13 @@ class BrevoEmailBackendTests(SimpleTestCase):
             to=["persona@example.test"],
         )
 
-        with self.assertRaises(BrevoEmailDeliveryError) as raised:
+        with (
+            self.assertLogs("apps.core.email_backends", level="WARNING") as logs,
+            self.assertRaises(BrevoEmailDeliveryError) as raised,
+        ):
             BrevoEmailBackend(fail_silently=False).send_messages([message])
 
+        self.assertLogSinDatosSensibles(logs)
         self.assertEqual(raised.exception.error_class, "ApiError")
         self.assertEqual(raised.exception.status_code, "429")
         self.assertEqual(raised.exception.provider_code, "rate_limit")
@@ -376,9 +396,13 @@ class BrevoEmailBackendTests(SimpleTestCase):
             to=["persona@example.test"],
         )
 
-        with self.assertRaises(BrevoEmailDeliveryError) as raised:
+        with (
+            self.assertLogs("apps.core.email_backends", level="WARNING") as logs,
+            self.assertRaises(BrevoEmailDeliveryError) as raised,
+        ):
             BrevoEmailBackend(fail_silently=False).send_messages([message])
 
+        self.assertLogSinDatosSensibles(logs)
         self.assertEqual(raised.exception.error_class, "ApiError")
         self.assertEqual(raised.exception.status_code, "429")
         self.assertEqual(raised.exception.provider_code, "rate_limit")

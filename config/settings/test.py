@@ -28,5 +28,11 @@ else:
         }
     }
 
+LOG_LEVEL = env_log_level("LOG_LEVEL", "WARNING")  # noqa: F405
+LOGGING = construir_logging(LOG_LEVEL)  # noqa: F405
+# Los 403/404/429 esperados no ensucian la salida; los tests que verifican
+# registros usan assertLogs, que agrega su propio handler.
+LOGGING["handlers"]["console"] = {"class": "logging.NullHandler"}
+
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"

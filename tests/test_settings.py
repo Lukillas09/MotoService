@@ -99,7 +99,8 @@ print(json.dumps({'debug': settings.DEBUG, 'responses': responses}))
             timeout=20,
             check=True,
         )
-        return json.loads(result.stdout)
+        # Con DEBUG=False el 404 de estáticos se registra en stdout antes del JSON.
+        return json.loads(result.stdout.strip().splitlines()[-1])
 
     def test_runserver_sirve_css_iconos_e_imagenes_con_debug_release_heredado(self):
         result = self.probe_runserver()
