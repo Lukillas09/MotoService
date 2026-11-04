@@ -1,5 +1,7 @@
 # MotoService
 
+[![Tests](https://github.com/Lukillas09/MotoService/actions/workflows/tests.yml/badge.svg)](https://github.com/Lukillas09/MotoService/actions/workflows/tests.yml)
+
 Aplicación web para la gestión cotidiana de un taller de motos. Usa un monolito Django modular, responsive e instalable como PWA, con PostgreSQL como base oficial y Supabase PostgreSQL en producción.
 
 Las fases 1 a 6 cubren el flujo operativo principal y su interfaz final:
@@ -177,9 +179,14 @@ Abrí el enlace de invitación o recuperación que Django imprime en esa misma t
 
 Las pruebas marcadas como PostgreSQL se omiten honestamente con SQLite. Para ejecutarlas, definí `TEST_DATABASE_URL` con credenciales de una instancia local y descartable; Django creará su base de test. La suite rechaza una URL que no sea PostgreSQL.
 
+### Integración continua
+
+`.github/workflows/tests.yml` corre en cada push y pull request con Python 3.13 y un service `postgres:17` propio del job. Define `TEST_DATABASE_URL` hacia ese service, de modo que los tests de concurrencia e índice de email normalizado se ejecutan en vez de omitirse; un paso previo falla si la conexión no es PostgreSQL. El job ejecuta `makemigrations --check --dry-run`, `check`, `check --deploy` con settings de producción y valores ficticios, y la suite completa. La única advertencia esperada de `check --deploy` es `security.W004` (HSTS), que se habilitará al confirmar el dominio definitivo.
+
 ## Estructura
 
 ```text
+.github/workflows/      CI de tests sobre PostgreSQL
 config/                 Configuración Django y settings por entorno
 apps/                   Apps internas del proyecto
 templates/              Templates globales

@@ -6,6 +6,9 @@ from django.core.exceptions import ImproperlyConfigured
 from .base import *  # noqa: F403
 
 
+# Los tests nunca toman DATABASE_URL: base.py carga .env y una URL de
+# producción terminaría creando bases de test en Supabase. PostgreSQL se activa
+# sólo con TEST_DATABASE_URL (el CI la apunta a su service postgres:17).
 TEST_DATABASE_URL = (os.getenv("TEST_DATABASE_URL") or "").strip()
 if TEST_DATABASE_URL:
     TEST_DATABASE = dj_database_url.parse(
