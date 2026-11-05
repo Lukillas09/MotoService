@@ -213,7 +213,7 @@ class SeguimientoViewTests(TestCase):
         self.assertContains(response, "Primer contacto")
         self.assertContains(response, "Esperar")
         self.assertContains(response, "Retomar")
-        self.assertContains(response, self.usuario.username, count=3)
+        self.assertContains(response, f"por {self.usuario.username}", count=3)
         eventos = list(response.context["eventos"])
         self.assertEqual(
             [evento.tipo_evento for evento in eventos],

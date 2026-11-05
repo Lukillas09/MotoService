@@ -6,6 +6,14 @@ if ("serviceWorker" in navigator) {
 
 const loadingBar = document.querySelector("#global-loading");
 
+// El HTML trae "Ctrl K"; en Mac/iOS el atajo real es ⌘K.
+const platform = navigator.userAgentData?.platform || navigator.platform || "";
+if (/mac|iphone|ipad|ipod/i.test(platform)) {
+  document.querySelectorAll(".search-hint").forEach((hint) => {
+    hint.textContent = "⌘K";
+  });
+}
+
 document.addEventListener("keydown", (event) => {
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
     const search = document.querySelector("#global-search");

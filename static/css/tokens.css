@@ -1,0 +1,45 @@
+/* Tokens de diseño: colores, superficies, bordes, radios, sombras, espacios y tiempos. */
+
+:root {
+  color-scheme: light;
+  --color-primary: #075ee5;
+  --color-primary-strong: #064ec0;
+  --color-primary-soft: #eaf3ff;
+  --color-danger: #e52d43;
+  --color-danger-strong: #c21f34;
+  --color-danger-soft: #fff0f2;
+  --color-warning: #d97706;
+  --color-warning-strong: #a85b00;
+  --color-warning-soft: #fff7e8;
+  --color-success: #0a9b5a;
+  --color-success-soft: #eaf9f1;
+  --color-info: #087ccf;
+  --color-info-soft: #eaf6ff;
+  --color-purple: #6d4be8;
+  --color-purple-soft: #f1edff;
+  --color-ink: #10213e;
+  --color-text: #263a59;
+  --color-muted: #687b98;
+  --surface: #ffffff;
+  --surface-secondary: #f5f8fc;
+  --surface-tertiary: #edf3fa;
+  --border-color: #dce6f2;
+  --border-strong: #c9d7e8;
+  --radius-sm: 0.625rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.125rem;
+  --radius-xl: 1.5rem;
+  --shadow-sm: 0 0.25rem 0.8rem rgba(28, 62, 106, 0.07);
+  --shadow-md: 0 0.75rem 2rem rgba(28, 62, 106, 0.1);
+  --shadow-focus: 0 0 0 0.22rem rgba(7, 94, 229, 0.18);
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --sidebar-width: 16rem;
+  --topbar-height: 4.5rem;
+  --transition-fast: 160ms ease;
+  --transition-normal: 220ms ease;
+}

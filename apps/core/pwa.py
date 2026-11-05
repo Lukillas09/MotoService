@@ -15,7 +15,12 @@ from config.version import APP_VERSION
 # Recursos públicos que el service worker precarga. Sólo estáticos propios:
 # nunca HTML autenticado ni respuestas con datos del taller.
 RECURSOS_PRECARGADOS = (
-    "css/app.css",
+    "css/tokens.css",
+    "css/base.css",
+    "css/components.css",
+    "css/pages.css",
+    "css/responsive.css",
+    "css/utilities.css",
     "js/app.js",
     "js/guide.js",
     "manifest.webmanifest",

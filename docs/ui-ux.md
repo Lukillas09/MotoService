@@ -4,7 +4,29 @@ La interfaz de MotoService está orientada a responder primero qué requiere ate
 
 ## Sistema visual
 
-Los tokens principales viven en `static/css/app.css`. El azul `#075ee5` identifica acciones y navegación; rojo, naranja, verde, celeste y violeta comunican estados. Las superficies usan blanco y grises azulados suaves, con bordes discretos, radios de 10 a 24 px según jerarquía y dos niveles de sombra. La tipografía utiliza la pila del sistema para evitar descargas adicionales.
+El CSS propio vive en `static/css/`, dividido por responsabilidad y cargado sin build step mediante `<link>` en este orden desde `base.html`:
+
+1. `tokens.css`: variables de color, superficies, bordes, radios, sombras, espacios y tiempos.
+2. `base.css`: reset mínimo, tipografía, foco, marca, shell autenticado (sidebar, topbar, contenido), encabezados de página, shell público y versión.
+3. `components.css`: cards, botones, modal de confirmación, formularios, filtros, badges, patente, moto genérica, cards de persona y contacto, detalle, estados vacíos, toasts, barra de carga y paginación.
+4. `pages.css`: dashboard, búsqueda, ficha de moto, historial, alertas y seguimiento, formulario de servicio, exportaciones, login, guía y usuarios.
+5. `responsive.css`: media queries por ancho y `prefers-reduced-motion`; va después de componentes y páginas para ganarles.
+6. `utilities.css`: utilidades de una responsabilidad, al final.
+
+No se usa `@import`, que encadenaría descargas. La alternativa de un único archivo sin `@import` sólo es posible concatenando, es decir, con un build step. Los seis `<link>` se piden en paralelo, WhiteNoise los sirve con hash y caché inmutable, y el service worker los precarga. La división se verificó con capturas píxel a píxel de 19 pantallas en escritorio y móvil, además de hover y offcanvas abiertos.
+
+Quedan seis `!important`, todos necesarios:
+
+- `.text-secondary` y `.shadow-sm` (`utilities.css`) reemplazan utilidades de Bootstrap que ya usan `!important`.
+- Los cuatro de `prefers-reduced-motion` (`responsive.css`) tienen que ganarle a cualquier transición o animación.
+
+Se quitaron diez que no hacían falta:
+
+- El borde de `.card` y, con él, los de `.empty-state` y `.record-card:hover`, que sólo existían para ganarle.
+- El `border: 0` de `.dashboard-hero` y el `box-shadow: none` de `.quick-search-card .input-group`, que no competían con ninguna regla.
+- Los anchos y bordes de los offcanvas (`.follow-up-drawer`, `.mobile-more`), que ahora usan las variables `--bs-offcanvas-width` y `--bs-offcanvas-border-color` de Bootstrap.
+
+Los tokens principales viven en `static/css/tokens.css`. El azul `#075ee5` identifica acciones y navegación; rojo, naranja, verde, celeste y violeta comunican estados. Las superficies usan blanco y grises azulados suaves, con bordes discretos, radios de 10 a 24 px según jerarquía y dos niveles de sombra. La tipografía utiliza la pila del sistema para evitar descargas adicionales.
 
 Los estados técnicos y humanos permanecen separados:
 
@@ -16,6 +38,10 @@ Las clases de badges se resuelven de forma centralizada mediante los filtros de 
 ## Navegación responsive
 
 En escritorio se muestra una sidebar fija con las áreas principales y una topbar con búsqueda global y contexto de sesión. Mi cuenta está disponible para todas las personas autenticadas; Usuarios y Exportaciones aparecen solo para Propietarios. En tablet y móvil, hasta 991 px, la sidebar desaparece y se reemplaza por una navegación inferior con Inicio, Clientes, la acción central Nuevo servicio, Motos y Más. “Más” abre un offcanvas Bootstrap con Mi cuenta, Usuarios y Exportaciones cuando corresponde, Servicios, Mantenimientos, reglas, búsqueda y cierre de sesión.
+
+La topbar muestra el nombre completo de la persona o, si no lo cargó, su username. El avatar usa las iniciales de nombre y apellido (máximo dos, en mayúscula y normalizadas para tildes) mediante el filtro `iniciales_usuario` de `formato.py`; sin nombre usa la inicial del username. El hint de la búsqueda global llega del servidor como “Ctrl K” y `app.js` lo cambia a “⌘K” en Mac y iOS.
+
+La búsqueda global (`/buscar/`) muestra hasta 8 clientes activos, 8 motos activas y 8 servicios de cualquier estado. Los servicios se encuentran por patente, marca o modelo de la moto, cliente, teléfono, mantenimientos realizados, trabajos adicionales y observaciones, con la misma lógica de `Servicio.objects.buscar()` que usa el listado de servicios.
 
 Los KPIs usan una grilla 4×1 en escritorio y 2×2 en anchos menores. Las filas de servicios, mantenimientos e historial pasan progresivamente a dos columnas y luego a cards verticales. Los formularios agrupan campos por tarea y la selección de mantenimientos usa controles táctiles completos.
 

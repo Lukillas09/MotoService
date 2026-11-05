@@ -10,7 +10,7 @@ from config.version import APP_VERSION
 
 
 def static_con_hash(ruta):
-    """Simula ManifestStaticFilesStorage: app.css -> app.3f9a1c.css."""
+    """Simula ManifestStaticFilesStorage: tokens.css -> tokens.3f9a1c.css."""
     base, punto, extension = ruta.rpartition(".")
     return f"/static/{base}.3f9a1c{punto}{extension}"
 
@@ -54,10 +54,11 @@ class ServiceWorkerTests(TestCase):
             response = self.client.get(self.url)
 
         recursos = self.recursos(response)
-        self.assertIn("/static/css/app.3f9a1c.css", recursos)
+        self.assertIn("/static/css/tokens.3f9a1c.css", recursos)
+        self.assertIn("/static/css/utilities.3f9a1c.css", recursos)
         self.assertIn("/static/js/app.3f9a1c.js", recursos)
         self.assertIn("/static/icons/motoservice-mark-96.3f9a1c.png", recursos)
-        self.assertNotIn("/static/css/app.css", recursos)
+        self.assertNotIn("/static/css/tokens.css", recursos)
         self.assertEqual(len(recursos), len(pwa.RECURSOS_PRECARGADOS))
         self.assertIn('const OFFLINE_URL = "/offline/"', self.contenido(response))
 

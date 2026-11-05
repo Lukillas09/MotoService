@@ -85,7 +85,7 @@ from django.test import RequestFactory
 
 handler = Command().get_handler(use_static_handler=True, insecure_serving=False)
 responses = {}
-for path in ('css/app.css', 'icons/ui.svg', 'icons/motoservice-mark-96.png'):
+for path in ('css/tokens.css', 'icons/ui.svg', 'icons/motoservice-mark-96.png'):
     headers = []
     request = RequestFactory().get('/static/' + path, HTTP_HOST='127.0.0.1')
     response = handler(request.environ, lambda status, values: headers.append((status, values)))
@@ -113,7 +113,7 @@ print(json.dumps({'debug': settings.DEBUG, 'responses': responses}))
 
         self.assertTrue(result["debug"])
         for path, content_type in (
-            ("css/app.css", "text/css"),
+            ("css/tokens.css", "text/css"),
             ("icons/ui.svg", "image/svg+xml"),
             ("icons/motoservice-mark-96.png", "image/png"),
         ):

@@ -132,6 +132,7 @@ def busqueda_global(request):
     termino = request.GET.get("q", "").strip()
     clientes = Cliente.objects.none()
     motos = Moto.objects.none()
+    servicios = Servicio.objects.none()
 
     if termino:
         clientes = (
@@ -148,11 +149,18 @@ def busqueda_global(request):
             .select_related("cliente")
             .buscar(termino)[:8]
         )
+        # Todos los estados: un servicio cancelado también es historial útil.
+        servicios = Servicio.objects.con_detalle().buscar(termino)[:8]
 
     return render(
         request,
         "core/search.html",
-        {"termino": termino, "clientes": clientes, "motos": motos},
+        {
+            "termino": termino,
+            "clientes": clientes,
+            "motos": motos,
+            "servicios": servicios,
+        },
     )
 
 

@@ -1,4 +1,5 @@
 from decimal import Decimal, InvalidOperation
+import unicodedata
 
 from django import template
 
@@ -72,3 +73,22 @@ def seguimiento_badge(estado):
         "TURNO_ACORDADO": "status-badge status-success",
         "NO_INTERESADO": "status-badge status-neutral",
     }.get(valor, "status-badge status-neutral")
+
+
+@register.filter
+def iniciales_usuario(usuario):
+    """Iniciales de nombre y apellido (máximo 2); si faltan, la del username."""
+    partes = (
+        getattr(usuario, "first_name", ""),
+        getattr(usuario, "last_name", ""),
+    )
+    iniciales = [
+        unicodedata.normalize("NFC", parte.strip())[0].upper()[:1]
+        for parte in partes
+        if parte and parte.strip()
+    ]
+    if not iniciales:
+        username = usuario.get_username() if hasattr(usuario, "get_username") else ""
+        username = unicodedata.normalize("NFC", (username or "").strip())
+        iniciales = [username[:1].upper()[:1]] if username else []
+    return "".join(iniciales)
