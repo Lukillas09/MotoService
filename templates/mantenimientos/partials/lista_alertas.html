@@ -122,7 +122,7 @@
 
               <details class="follow-up-action-card">
                 <summary class="fw-bold">Otras acciones</summary>
-                <form class="mt-3" method="post" action="{% url 'notificaciones:no_interesado' tecnica.moto.pk tecnica.tipo_mantenimiento.pk %}" data-confirm-message="¿Marcar al cliente como no interesado para este ciclo?">
+                <form class="mt-3" method="post" action="{% url 'notificaciones:no_interesado' tecnica.moto.pk tecnica.tipo_mantenimiento.pk %}" data-confirm-title="¿Marcar como no interesado?" data-confirm-message="El cliente sale de la lista de atención para este ciclo de mantenimiento. La alerta técnica no cambia y podés reabrir el seguimiento cuando quieras." data-confirm-button="Marcar no interesado" data-confirm-tone="warning">
                   {% csrf_token %}<input name="mantenimiento_base" type="hidden" value="{{ tecnica.ultimo_mantenimiento.pk }}">
                   <label class="form-label">No interesado</label><textarea class="form-control mb-2" name="nota" rows="2" placeholder="Motivo opcional"></textarea><button class="btn btn-outline-secondary w-100" type="submit">Marcar no interesado</button>
                 </form>

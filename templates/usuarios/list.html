@@ -40,12 +40,12 @@
               <a class="btn btn-outline-primary" href="{% url 'usuarios:update' usuario.pk %}">{% include "shared/icon.html" with name="edit" %} Editar</a>
               {% if usuario.is_active %}
                 {% if fila.estado_codigo == "PENDIENTE" %}
-                  <form method="post" action="{% url 'usuarios:resend_invitation' usuario.pk %}" data-confirm-message="Se invalidará el enlace anterior y se enviará una nueva invitación.">
+                  <form method="post" action="{% url 'usuarios:resend_invitation' usuario.pk %}" data-confirm-title="¿Reenviar la invitación?" data-confirm-message="Se envía un enlace nuevo por email y el anterior deja de funcionar." data-confirm-button="Reenviar invitación" data-confirm-tone="primary">
                     {% csrf_token %}
                     <button class="btn btn-outline-primary" type="submit">{% include "shared/icon.html" with name="mail" %} Reenviar invitación</button>
                   </form>
                 {% endif %}
-                <form method="post" action="{% url 'usuarios:deactivate' usuario.pk %}" data-confirm-message="¿Querés desactivar a {{ usuario.get_username }}? No podrá ingresar hasta que lo reactives.">
+                <form method="post" action="{% url 'usuarios:deactivate' usuario.pk %}" data-confirm-title="¿Desactivar a {{ usuario.get_username }}?" data-confirm-message="No va a poder ingresar hasta que lo reactives. Su historial y lo que registró se conservan." data-confirm-button="Desactivar usuario" data-confirm-tone="danger">
                   {% csrf_token %}
                   <button class="btn btn-outline-danger" type="submit" {% if fila.ultimo_propietario %}disabled title="Debe quedar al menos un Propietario activo"{% endif %}>Desactivar usuario</button>
                 </form>

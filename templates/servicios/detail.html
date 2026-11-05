@@ -25,7 +25,7 @@
           <a class="btn btn-primary" href="{% url 'servicios:update' servicio.pk %}">{% include "shared/icon.html" with name="edit" %} Editar servicio</a>
           <a class="btn btn-outline-primary" href="{% url 'motos:detail' servicio.moto.pk %}">{% include "shared/icon.html" with name="moto-solid" %} Ver moto</a>
           {% if servicio.estado != 'CANCELADO' %}
-            <form method="post" action="{% url 'servicios:cancel' servicio.pk %}" data-confirm-message="¿Cancelar este servicio? El registro seguirá visible en el historial.">
+            <form method="post" action="{% url 'servicios:cancel' servicio.pk %}" data-confirm-title="¿Cancelar este servicio?" data-confirm-message="El servicio sigue visible en el historial, pero deja de contar para los próximos mantenimientos y no cambia el kilometraje de la moto. Si te equivocaste, podés editarlo y cambiar el estado." data-confirm-button="Cancelar servicio" data-confirm-tone="danger">
               {% csrf_token %}<button class="btn btn-outline-danger" type="submit">Cancelar servicio</button>
             </form>
           {% endif %}

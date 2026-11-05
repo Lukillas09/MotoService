@@ -4,8 +4,10 @@
   --color-primary-strong: #064ec0;
   --color-primary-soft: #eaf3ff;
   --color-danger: #e52d43;
+  --color-danger-strong: #c21f34;
   --color-danger-soft: #fff0f2;
   --color-warning: #d97706;
+  --color-warning-strong: #a85b00;
   --color-warning-soft: #fff7e8;
   --color-success: #0a9b5a;
   --color-success-soft: #eaf9f1;
@@ -605,6 +607,48 @@ textarea {
   --bs-btn-border-color: var(--color-success);
   --bs-btn-hover-bg: #07864d;
   --bs-btn-hover-border-color: #07864d;
+}
+
+/* Botones del modal de confirmación: tonos de estado con contraste AA (texto blanco). */
+.btn-confirm-danger,
+.btn-confirm-warning {
+  --bs-btn-color: #fff;
+  --bs-btn-hover-color: #fff;
+  --bs-btn-active-color: #fff;
+  --bs-btn-bg: var(--confirm-tone);
+  --bs-btn-border-color: var(--confirm-tone);
+  --bs-btn-hover-bg: color-mix(in srgb, var(--confirm-tone) 85%, #000);
+  --bs-btn-hover-border-color: color-mix(in srgb, var(--confirm-tone) 85%, #000);
+  --bs-btn-active-bg: color-mix(in srgb, var(--confirm-tone) 78%, #000);
+  --bs-btn-active-border-color: color-mix(in srgb, var(--confirm-tone) 78%, #000);
+  --bs-btn-focus-shadow-rgb: 194, 31, 52;
+}
+
+.btn-confirm-danger { --confirm-tone: var(--color-danger-strong); }
+.btn-confirm-warning { --confirm-tone: var(--color-warning-strong); }
+
+.confirm-modal .modal-content {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.confirm-modal .modal-title {
+  color: var(--color-ink);
+  font-weight: 750;
+}
+
+.confirm-modal .modal-body {
+  color: var(--color-text);
+}
+
+.confirm-modal .modal-footer .btn {
+  min-height: 2.75rem;
+}
+
+.confirm-modal .btn-close {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
 }
 
 .app-touch-target {

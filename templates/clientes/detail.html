@@ -24,7 +24,7 @@
           {% contacto_cliente cliente variante="detalle" %}
           <a class="btn btn-outline-primary" href="{% url 'clientes:update' cliente.pk %}">{% include "shared/icon.html" with name="edit" %}Editar</a>
           {% if cliente.activo %}
-            <form method="post" action="{% url 'clientes:archive' cliente.pk %}" data-confirm-message="¿Archivar este cliente? Sus motos conservarán su estado actual.">
+            <form method="post" action="{% url 'clientes:archive' cliente.pk %}" data-confirm-title="¿Archivar este cliente?" data-confirm-message="El cliente deja de aparecer en los listados y en la búsqueda. Sus motos conservan su estado actual. Podés restaurarlo después." data-confirm-button="Archivar cliente" data-confirm-tone="danger">
               {% csrf_token %}
               <button class="btn btn-outline-danger" type="submit">{% include "shared/icon.html" with name="archive" %}Archivar</button>
             </form>

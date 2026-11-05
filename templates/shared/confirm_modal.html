@@ -1,0 +1,22 @@
+{% comment %}
+Modal único de confirmación. app.js lo abre para cualquier form con data-confirm-message
+(y opcionalmente data-confirm-title, data-confirm-button y data-confirm-tone).
+Sin JavaScript el form se envía directo: la autorización sigue en el backend.
+{% endcomment %}
+<div class="modal fade confirm-modal" id="confirm-modal" tabindex="-1" aria-labelledby="confirm-modal-title" aria-describedby="confirm-modal-message" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title h5" id="confirm-modal-title">¿Confirmás esta acción?</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-0" id="confirm-modal-message"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" data-confirm-cancel>Cancelar</button>
+        <button type="button" class="btn btn-confirm-danger" data-confirm-accept>Confirmar</button>
+      </div>
+    </div>
+  </div>
+</div>

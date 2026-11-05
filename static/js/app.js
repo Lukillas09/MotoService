@@ -16,17 +16,99 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+// Confirmación de acciones: modal propio para forms con data-confirm-message.
+const confirmModal = document.querySelector("#confirm-modal");
+const CONFIRM_TONES = {
+  danger: "btn-confirm-danger",
+  warning: "btn-confirm-warning",
+  primary: "btn-primary",
+};
+let pendingConfirmation = null;
+
+const resubmitConfirmed = (form, submitter) => {
+  // La segunda vuelta no vuelve a pedir confirmación y conserva el botón
+  // usado (nombre y valor), así HTMX y el estado is-submitting funcionan igual.
+  form.dataset.confirmed = "true";
+  if (typeof form.requestSubmit === "function") {
+    form.requestSubmit(submitter?.form === form ? submitter : undefined);
+    return;
+  }
+  if (submitter?.name) {
+    const hidden = document.createElement("input");
+    hidden.type = "hidden";
+    hidden.name = submitter.name;
+    hidden.value = submitter.value;
+    form.append(hidden);
+  }
+  form.submit();
+};
+
+const openConfirmation = (form, submitter) => {
+  const tone = CONFIRM_TONES[form.dataset.confirmTone] ? form.dataset.confirmTone : "danger";
+  const accept = confirmModal.querySelector("[data-confirm-accept]");
+  confirmModal.querySelector("#confirm-modal-title").textContent =
+    form.dataset.confirmTitle || "¿Confirmás esta acción?";
+  confirmModal.querySelector("#confirm-modal-message").textContent = form.dataset.confirmMessage;
+  accept.textContent = form.dataset.confirmButton || "Confirmar";
+  accept.className = `btn ${CONFIRM_TONES[tone]}`;
+  pendingConfirmation = {
+    form,
+    submitter,
+    tone,
+    confirmed: false,
+    returnFocus: submitter || document.activeElement,
+  };
+  window.bootstrap.Modal.getOrCreateInstance(confirmModal).show();
+};
+
+if (confirmModal) {
+  confirmModal.addEventListener("shown.bs.modal", () => {
+    // En acciones destructivas el foco arranca en "Cancelar".
+    const selector = pendingConfirmation?.tone === "primary" ? "[data-confirm-accept]" : "[data-confirm-cancel]";
+    confirmModal.querySelector(selector)?.focus();
+  });
+  confirmModal.querySelector("[data-confirm-accept]").addEventListener("click", () => {
+    if (!pendingConfirmation) return;
+    pendingConfirmation.confirmed = true;
+    window.bootstrap.Modal.getOrCreateInstance(confirmModal).hide();
+  });
+  confirmModal.addEventListener("hidden.bs.modal", () => {
+    // Cancelar, Escape o clic afuera llegan acá sin confirmar.
+    const pending = pendingConfirmation;
+    pendingConfirmation = null;
+    if (!pending) return;
+    if (pending.returnFocus?.isConnected) pending.returnFocus.focus();
+    if (pending.confirmed) resubmitConfirmed(pending.form, pending.submitter);
+  });
+}
+
+// Fase de captura: corre antes que HTMX y que el estado is-submitting.
+document.addEventListener(
+  "submit",
+  (event) => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement) || !form.matches("[data-confirm-message]")) return;
+    if (form.dataset.confirmed === "true") {
+      delete form.dataset.confirmed;
+      return;
+    }
+    if (!confirmModal || !window.bootstrap?.Modal) {
+      if (!window.confirm(form.dataset.confirmMessage)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+      return;
+    }
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (!pendingConfirmation) openConfirmation(form, event.submitter || null);
+  },
+  true
+);
+
 document.addEventListener("submit", (event) => {
   const form = event.target.closest("form");
   if (!form) return;
-
-  if (
-    form.matches("[data-confirm-message]") &&
-    !window.confirm(form.dataset.confirmMessage)
-  ) {
-    event.preventDefault();
-    return;
-  }
 
   if ((form.method || "get").toLowerCase() !== "post") return;
 

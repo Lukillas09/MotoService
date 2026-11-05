@@ -42,7 +42,7 @@
             <div class="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-start gap-2 flex-shrink-0">
               <a class="btn btn-outline-primary" href="{% url 'mantenimientos:tipo_update' tipo.pk %}">{% include "shared/icon.html" with name="edit" %} Editar</a>
               {% if tipo.activo %}
-                <form method="post" action="{% url 'mantenimientos:tipo_archive' tipo.pk %}" data-confirm-message="¿Desactivar este tipo de mantenimiento? El historial se conservará.">{% csrf_token %}<button class="btn btn-outline-danger w-100" type="submit">Desactivar</button></form>
+                <form method="post" action="{% url 'mantenimientos:tipo_archive' tipo.pk %}" data-confirm-title="¿Desactivar este tipo de mantenimiento?" data-confirm-message="Deja de generar alertas y no aparece para servicios nuevos. El historial se conserva y podés restaurarlo después." data-confirm-button="Desactivar tipo" data-confirm-tone="warning">{% csrf_token %}<button class="btn btn-outline-danger w-100" type="submit">Desactivar</button></form>
               {% else %}
                 <form method="post" action="{% url 'mantenimientos:tipo_restore' tipo.pk %}">{% csrf_token %}<button class="btn btn-success w-100" type="submit">Restaurar</button></form>
               {% endif %}
