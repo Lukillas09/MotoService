@@ -42,6 +42,14 @@
       </form>
     </div>
   </div>
+
+  <section class="card form-section-card mt-4" aria-labelledby="apariencia-title">
+    <div class="card-body p-md-4">
+      <div class="form-section-title"><span class="section-icon">{% include "shared/icon.html" with name="settings" %}</span><div><h2 id="apariencia-title" class="h5">Apariencia</h2><p class="text-secondary small mb-0">Elegí cómo se ve MotoService en este dispositivo.</p></div></div>
+      {% include "shared/selector_tema.html" with prefijo="cuenta" %}
+      <noscript><p class="text-secondary small mb-0">El tema sigue la configuración del dispositivo. Para elegirlo manualmente hace falta JavaScript.</p></noscript>
+    </div>
+  </section>
 </div>
 {% endblock %}
 

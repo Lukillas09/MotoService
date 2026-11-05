@@ -116,7 +116,7 @@
     height: calc(4.35rem + env(safe-area-inset-bottom));
     padding: 0.3rem 0.4rem env(safe-area-inset-bottom);
     align-items: center;
-    background: rgba(255, 255, 255, 0.96);
+    background: color-mix(in srgb, var(--surface) 96%, transparent);
     border-top: 1px solid var(--border-color);
     box-shadow: 0 -0.5rem 1.5rem rgba(24, 58, 100, 0.08);
     grid-template-columns: repeat(5, 1fr);
@@ -159,7 +159,7 @@
     place-items: center;
     color: #fff;
     background: linear-gradient(145deg, #0b6cf3, #0750ce);
-    border: 0.28rem solid #fff;
+    border: 0.28rem solid var(--surface);
     border-radius: 50%;
     box-shadow: 0 0.65rem 1.4rem rgba(7, 94, 229, 0.28);
   }

@@ -34,7 +34,7 @@
   <form class="card quick-search-card d-lg-none" method="get" action="{% url 'core:search' %}" role="search">
     <label class="visually-hidden" for="dashboard-search">Buscar clientes y motos</label>
     <div class="input-group">
-      <span class="input-group-text bg-white">{% include "shared/icon.html" with name="search" %}</span>
+      <span class="input-group-text">{% include "shared/icon.html" with name="search" %}</span>
       <input id="dashboard-search" class="form-control" name="q" type="search" placeholder="Buscar clientes, motos, servicios..." required>
       <button class="btn btn-primary" type="submit">Buscar</button>
     </div>

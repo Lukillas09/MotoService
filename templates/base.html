@@ -4,8 +4,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#075ee5">
-  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#075ee5" media="(prefers-color-scheme: light)" data-tema="light">
+  <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)" data-tema="dark">
+  <meta name="color-scheme" content="light dark">
+  {# Tema antes del CSS para no mostrar un cuadro con el tema equivocado. Automático sigue al sistema. #}
+  <script>
+    (function () {
+      var tema = "auto";
+      try { tema = localStorage.getItem("motoservice-tema") || "auto"; } catch (error) {}
+      if (tema !== "light" && tema !== "dark") tema = "auto";
+      var raiz = document.documentElement;
+      var oscuro = tema === "dark" || (tema === "auto" && !!window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      if (tema !== "auto") raiz.setAttribute("data-theme", tema);
+      raiz.setAttribute("data-bs-theme", oscuro ? "dark" : "light");
+    })();
+  </script>
   <meta name="description" content="Gestión simple para taller de motos">
   {# Sin caché de historial HTMX: no guarda HTML privado en localStorage y "atrás" recarga la página completa en vez de pedir un parcial. #}
   <meta name="htmx-config" content='{"historyCacheSize": 0, "refreshOnHistoryMiss": true}'>

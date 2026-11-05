@@ -34,7 +34,8 @@
       {% if es_propietario_actual %}<a href="{% url 'exportaciones:index' %}">{% include "shared/icon.html" with name="download" %}<span>Exportaciones</span>{% include "shared/icon.html" with name="chevron-right" extra_class="ms-auto" %}</a>{% endif %}
       <a href="{% url 'core:search' %}">{% include "shared/icon.html" with name="search" %}<span>Búsqueda global</span>{% include "shared/icon.html" with name="chevron-right" extra_class="ms-auto" %}</a>
     </nav>
-    <div class="mobile-user-card mt-auto">
+    <div class="mt-auto">{% include "shared/selector_tema.html" with prefijo="menu" %}</div>
+    <div class="mobile-user-card">
       <span class="avatar" aria-hidden="true">{{ user|iniciales_usuario }}</span>
       <span class="min-width-0"><strong>{{ user.get_full_name|default:user.get_username }}</strong><small>{% if rol_usuario_actual == "PROPIETARIO" %}Propietario{% else %}Usuario{% endif %}</small></span>
     </div>

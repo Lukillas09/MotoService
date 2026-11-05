@@ -155,20 +155,20 @@
   min-width: 0;
   padding: 0.9rem;
   flex-direction: column;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   transition: border-color var(--transition-normal), box-shadow var(--transition-normal), transform var(--transition-normal);
 }
 
 .attention-card:hover {
-  border-color: #b9d2f5;
+  border-color: var(--border-accent);
   box-shadow: var(--shadow-sm);
   transform: translateY(-0.15rem);
 }
 
 .attention-card-danger {
-  border-color: #ffc1ca;
+  border-color: var(--color-danger-border);
   box-shadow: inset 0 0 0 1px rgba(229, 45, 67, 0.04);
 }
 
@@ -308,7 +308,7 @@
   min-width: 0;
   padding: 0.85rem;
   align-items: center;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
 }
@@ -345,7 +345,7 @@
 }
 
 .service-card-cancelled {
-  background: #f4f6f9;
+  background: var(--color-neutral-soft);
   opacity: 0.84;
 }
 
@@ -501,7 +501,7 @@
   bottom: 0.7rem;
   left: 0.52rem;
   width: 0.12rem;
-  background: #d9e5f4;
+  background: var(--border-color);
   content: "";
 }
 
@@ -523,9 +523,9 @@
   width: 1.2rem;
   height: 1.2rem;
   place-items: center;
-  color: #fff;
-  background: var(--color-primary);
-  border: 0.22rem solid #e8f1ff;
+  color: var(--color-on-fill);
+  background: var(--color-primary-fill);
+  border: 0.22rem solid var(--color-primary-soft);
   border-radius: 50%;
 }
 
@@ -555,7 +555,7 @@
   position: relative;
   min-height: 3.25rem;
   padding: 0.75rem 0.85rem;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: 0.75rem;
   transition: border-color var(--transition-fast), background-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
@@ -563,7 +563,7 @@
 
 .maintenance-checkboxes > div > div:hover {
   background: var(--color-primary-soft);
-  border-color: #a9c9f5;
+  border-color: var(--border-accent);
   transform: translateY(-0.08rem);
 }
 
@@ -687,7 +687,7 @@
   width: min(64rem, 100%);
   min-height: 35rem;
   overflow: hidden;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-xl);
   box-shadow: 0 1.5rem 4rem rgba(22, 55, 95, 0.14);
@@ -785,7 +785,7 @@
 }
 .guide-note { padding: 1rem 1.25rem; margin: 1.5rem 0; background: var(--color-primary-soft); border-left: 3px solid var(--color-primary); border-radius: var(--radius-sm); }
 .guide-note-important { background: var(--color-warning-soft); border-left-color: var(--color-warning); }
-.guide-screenshot img { display: block; width: 100%; height: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm); }
+.guide-screenshot img { display: block; width: 100%; height: auto; border: 1px solid var(--screenshot-border); border-radius: var(--radius-sm); }
 .guide-screenshot-narrow { max-width: 31rem; margin-inline: auto; }
 .guide-screenshot figcaption { font-size: .8rem; color: var(--color-muted); margin-top: .5rem; }
 .guide-context-link { display: inline-flex; gap: .4rem; align-items: center; min-height: 44px; font-size: .875rem; }
@@ -814,14 +814,14 @@
 .role-badge {
   display: inline-flex;
   padding: 0.32rem 0.6rem;
-  color: #43566f;
+  color: var(--color-text-soft);
   background: var(--surface-secondary);
   border-radius: 999px;
   font-size: 0.76rem;
   font-weight: 750;
 }
 
-.role-propietario { color: #5140ad; background: var(--color-purple-soft); }
+.role-propietario { color: var(--color-purple-strong); background: var(--color-purple-soft); }
 .user-card-actions { display: flex; margin-top: auto; flex-wrap: wrap; gap: 0.55rem; }
 .user-card-actions form { display: contents; }
 .user-card-actions .btn { min-height: 2.75rem; }

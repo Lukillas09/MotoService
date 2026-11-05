@@ -6,6 +6,65 @@ if ("serviceWorker" in navigator) {
 
 const loadingBar = document.querySelector("#global-loading");
 
+// Tema: Automático (sigue al sistema), Claro u Oscuro. El script inline de base.html
+// aplica la preferencia guardada antes del CSS; acá se cambia y se sincroniza.
+const THEME_KEY = "motoservice-tema";
+const THEMES = ["auto", "light", "dark"];
+const darkQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+
+const readTheme = () => {
+  try {
+    const value = localStorage.getItem(THEME_KEY);
+    return THEMES.includes(value) ? value : "auto";
+  } catch {
+    return "auto";
+  }
+};
+
+const applyTheme = (theme) => {
+  const root = document.documentElement;
+  const dark = theme === "dark" || (theme === "auto" && Boolean(darkQuery?.matches));
+  // Sin transiciones durante el cambio: los colores no se animan.
+  root.classList.add("theme-switching");
+  if (theme === "auto") root.removeAttribute("data-theme");
+  else root.dataset.theme = theme;
+  root.dataset.bsTheme = dark ? "dark" : "light";
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => root.classList.remove("theme-switching"));
+  });
+
+  // Con un tema forzado, la barra del navegador usa ese color sin importar el sistema.
+  document.querySelectorAll('meta[name="theme-color"][data-tema]').forEach((meta) => {
+    meta.dataset.color ||= meta.content;
+    const forced = document.querySelector(`meta[name="theme-color"][data-tema="${dark ? "dark" : "light"}"]`);
+    meta.content = theme === "auto" ? meta.dataset.color : forced.dataset.color || forced.content;
+  });
+
+  document.querySelectorAll("[data-theme-picker] input[type='radio']").forEach((input) => {
+    input.checked = input.value === theme;
+  });
+};
+
+document.querySelectorAll("[data-theme-picker]").forEach((picker) => {
+  picker.hidden = false;
+});
+applyTheme(readTheme());
+
+document.addEventListener("change", (event) => {
+  const input = event.target;
+  if (!input.matches?.("[data-theme-picker] input[type='radio']") || !THEMES.includes(input.value)) return;
+  try {
+    localStorage.setItem(THEME_KEY, input.value);
+  } catch {
+    // Sin almacenamiento el tema vale sólo para esta página.
+  }
+  applyTheme(input.value);
+});
+
+darkQuery?.addEventListener?.("change", () => {
+  if (readTheme() === "auto") applyTheme("auto");
+});
+
 // El HTML trae "Ctrl K"; en Mac/iOS el atajo real es ⌘K.
 const platform = navigator.userAgentData?.platform || navigator.platform || "";
 if (/mac|iphone|ipad|ipod/i.test(platform)) {

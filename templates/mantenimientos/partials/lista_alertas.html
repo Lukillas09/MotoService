@@ -11,7 +11,7 @@
                 {% include "shared/moto_visual.html" with moto=tecnica.moto compact=True %}
                 <div class="min-width-0">
                   <span class="badge {{ tecnica.estado|mantenimiento_badge }}">{{ tecnica.estado_label }}</span>
-                  <strong class="d-block text-truncate mt-2 text-dark">{{ tecnica.tipo_mantenimiento.nombre }}</strong>
+                  <strong class="d-block text-truncate mt-2 text-ink">{{ tecnica.tipo_mantenimiento.nombre }}</strong>
                   <span class="small d-block text-truncate">{{ tecnica.moto.marca }} {{ tecnica.moto.modelo }}</span>
                   <span class="plate-chip mt-1">{{ tecnica.moto.patente|default:"Sin patente" }}</span>
                 </div>

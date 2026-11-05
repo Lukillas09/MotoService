@@ -1,30 +1,68 @@
-/* Tokens de diseño: colores, superficies, bordes, radios, sombras, espacios y tiempos. */
+/* Tokens de diseño: colores, superficies, bordes, radios, sombras, espacios y tiempos.
+   El tema oscuro sólo redefine valores; ninguna regla de los demás archivos depende del tema.
+   El script inline de base.html pone data-bs-theme="light|dark" en <html> antes de cargar el CSS
+   (Automático sigue prefers-color-scheme). Contraste verificado con scripts/verificar_contraste.py. */
 
 :root {
   color-scheme: light;
+
+  /* Acentos para texto, iconos, bordes e indicadores sobre superficies. */
   --color-primary: #075ee5;
   --color-primary-strong: #064ec0;
   --color-primary-soft: #eaf3ff;
   --color-danger: #e52d43;
   --color-danger-strong: #c21f34;
   --color-danger-soft: #fff0f2;
+  --color-danger-border: #ffd2d8;
   --color-warning: #d97706;
   --color-warning-strong: #a85b00;
   --color-warning-soft: #fff7e8;
+  --color-warning-border: #ffe0ad;
   --color-success: #0a9b5a;
+  --color-success-strong: #087a48;
   --color-success-soft: #eaf9f1;
+  --color-success-border: #c9eedb;
   --color-info: #087ccf;
+  --color-info-strong: #075dad;
   --color-info-soft: #eaf6ff;
+  --color-info-border: #cce9ff;
   --color-purple: #6d4be8;
+  --color-purple-strong: #5836c8;
   --color-purple-soft: #f1edff;
+  --color-purple-border: #dcd2ff;
+  --color-neutral-soft: #eef2f7;
+  --color-neutral-border: #dce3ec;
+
+  /* Rellenos con texto blanco encima (botones, avatar, página actual, timeline). */
+  --color-on-fill: #ffffff;
+  --color-primary-fill: #075ee5;
+  --color-primary-fill-strong: #064ec0;
+  --color-success-fill: #087a48;
+  --color-danger-fill: #c21f34;
+  --color-warning-fill: #a85b00;
+
+  /* Texto. */
   --color-ink: #10213e;
   --color-text: #263a59;
-  --color-muted: #687b98;
+  --color-text-soft: #46607f;
+  --color-muted: #5d6f8b;
+  --color-placeholder: #91a1b7;
+
+  /* Superficies y bordes. */
   --surface: #ffffff;
   --surface-secondary: #f5f8fc;
   --surface-tertiary: #edf3fa;
+  --surface-nav-active: #e5f0ff;
   --border-color: #dce6f2;
   --border-strong: #c9d7e8;
+  --border-accent: #b9d2f5;
+  --border-accent-strong: #8db7ef;
+  --focus-ring: rgba(7, 94, 229, 0.58);
+  --moto-visual-bg: linear-gradient(145deg, #eef7ff, #dcecff);
+  --moto-visual-border: #d7e7f8;
+  --page-glow: rgba(7, 94, 229, 0.055);
+  --screenshot-border: var(--border-color);
+
   --radius-sm: 0.625rem;
   --radius-md: 0.875rem;
   --radius-lg: 1.125rem;
@@ -42,4 +80,88 @@
   --topbar-height: 4.5rem;
   --transition-fast: 160ms ease;
   --transition-normal: 220ms ease;
+}
+
+/* Paleta oscura. Mayor especificidad que [data-bs-theme=dark] de Bootstrap para que
+   modales, offcanvas, dropdowns, formularios y accordion tomen las mismas superficies. */
+:root[data-bs-theme="dark"] {
+  color-scheme: dark;
+
+  --color-primary: #7cb2ff;
+  --color-primary-strong: #a9cbff;
+  --color-primary-soft: #16294a;
+  --color-danger: #ff7a8a;
+  --color-danger-strong: #ffa3ae;
+  --color-danger-soft: #3a1620;
+  --color-danger-border: #a8495a;
+  --color-warning: #f5a524;
+  --color-warning-strong: #ffc977;
+  --color-warning-soft: #33240c;
+  --color-warning-border: #946a1f;
+  --color-success: #3ccf8e;
+  --color-success-strong: #7fe2b4;
+  --color-success-soft: #0f2e22;
+  --color-success-border: #2f7d5a;
+  --color-info: #4fb3ff;
+  --color-info-strong: #93cdff;
+  --color-info-soft: #0f2740;
+  --color-info-border: #2f6f9f;
+  --color-purple: #a58bff;
+  --color-purple-strong: #c9baff;
+  --color-purple-soft: #231a45;
+  --color-purple-border: #7462c6;
+  --color-neutral-soft: #1c2a40;
+  --color-neutral-border: #55688a;
+
+  --color-on-fill: #ffffff;
+  --color-primary-fill: #2563d9;
+  --color-primary-fill-strong: #1c52bb;
+  --color-success-fill: #087a48;
+  --color-danger-fill: #c21f34;
+  --color-warning-fill: #a85b00;
+
+  --color-ink: #eef3fb;
+  --color-text: #cdd8e8;
+  --color-text-soft: #a9b8cf;
+  --color-muted: #93a5c0;
+  --color-placeholder: #7d8faa;
+
+  --surface: #131d2e;
+  --surface-secondary: #0b1220;
+  --surface-tertiary: #1b2840;
+  --surface-nav-active: #1a3260;
+  --border-color: #26364f;
+  --border-strong: #5f7597;
+  --border-accent: #3f6fb5;
+  --border-accent-strong: #5f8fd8;
+  --focus-ring: rgba(124, 178, 255, 0.85);
+  /* La moto ilustrada es oscura: se apoya sobre un panel claro atenuado para que se lea. */
+  --moto-visual-bg: linear-gradient(145deg, #dfe8f4, #c4d3e8);
+  --moto-visual-border: #3a4d6c;
+  --page-glow: rgba(124, 178, 255, 0.06);
+  /* Las capturas de la guía son claras: un borde visible las separa del fondo. */
+  --screenshot-border: var(--border-strong);
+
+  --shadow-sm: 0 0.25rem 0.8rem rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 0.75rem 2rem rgba(0, 0, 0, 0.45);
+  --shadow-focus: 0 0 0 0.22rem rgba(124, 178, 255, 0.35);
+
+  --bs-body-bg: var(--surface);
+  --bs-body-color: var(--color-text);
+  --bs-emphasis-color: var(--color-ink);
+  --bs-heading-color: var(--color-ink);
+  --bs-secondary-color: var(--color-muted);
+  --bs-secondary-bg: var(--surface-secondary);
+  --bs-tertiary-bg: var(--surface-tertiary);
+  --bs-border-color: var(--border-color);
+  --bs-link-color: var(--color-primary);
+  --bs-link-hover-color: var(--color-primary-strong);
+}
+
+/* El cambio de tema nunca anima colores (app.js agrega esta clase durante un cuadro). */
+.theme-switching,
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
 }

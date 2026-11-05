@@ -18,6 +18,10 @@
   box-shadow: var(--shadow-sm) !important;
 }
 
+.text-ink {
+  color: var(--color-ink);
+}
+
 .app-touch-target {
   min-height: 2.75rem;
 }
