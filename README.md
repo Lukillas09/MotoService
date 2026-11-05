@@ -45,6 +45,7 @@ Versión actual: **v1.0.2**.
 - Excel completo con todos los datos operativos;
 - backup manual recuperable del schema PostgreSQL mediante `pg_dump`;
 - interfaz final responsive con sidebar y topbar en escritorio;
+- modo oscuro con tres modos (Automático, Claro, Oscuro), elegible en Mi cuenta y en el menú “Más”;
 - navegación inferior y menú contextual en móvil;
 - representación visual genérica de motos sin fotos ni almacenamiento multimedia;
 - PWA instalable con iconos PNG, icono maskable y caché exclusiva de recursos estáticos;
