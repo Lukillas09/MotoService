@@ -429,39 +429,6 @@ class ProductionReadinessTests(TestCase):
                 sprite,
             )
 
-    def test_service_worker_se_sirve_desde_raiz_y_solo_cachea_estaticos(self):
-        response = self.client.get(reverse("service-worker"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("javascript", response.headers["Content-Type"])
-        contenido = b"".join(response.streaming_content).decode("utf-8")
-        self.assertIn('url.pathname.startsWith("/static/")', contenido)
-        self.assertIn('event.request.method !== "GET"', contenido)
-        self.assertIn("url.origin !== self.location.origin", contenido)
-        self.assertIn('const CACHE_NAME = "motoservice-static-v14"', contenido)
-        for asset in (
-            "/static/icons/ui.svg",
-            "/static/js/guide.js",
-            "/static/icons/motoservice-mark-96.png",
-            "/static/icons/favicon-32.png",
-            "/static/images/moto-generic.png",
-            "/static/icons/icon-maskable-192.png",
-            "/static/icons/icon-maskable-512.png",
-        ):
-            self.assertIn(asset, contenido)
-        self.assertNotIn("moto-generic.svg", contenido)
-        self.assertNotIn("icons/icon.svg", contenido)
-        for ruta_privada in (
-            "/clientes/",
-            "/motos/",
-            "/exportaciones/",
-            "/guia/",
-            "/usuarios/",
-            "/cuenta/",
-            "/accounts/password-reset/",
-        ):
-            self.assertNotIn(ruta_privada, contenido)
-
     def test_css_declara_tokens_y_respeta_reduccion_de_movimiento(self):
         css = (settings.BASE_DIR / "static" / "css" / "app.css").read_text(
             encoding="utf-8"

@@ -5,8 +5,9 @@ from django.contrib.staticfiles import finders
 from django.core.exceptions import PermissionDenied
 from django.db import DatabaseError, connection
 from django.db.models import Count, Q
-from django.http import Http404, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import render
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import csrf_exempt
@@ -19,6 +20,7 @@ from apps.servicios.models import Servicio
 from apps.usuarios.roles import es_propietario
 
 from .guia import CAPTURAS, TEMAS
+from .pwa import datos_service_worker
 
 
 logger = logging.getLogger(__name__)
@@ -170,3 +172,28 @@ def healthz(request):
         )
         return JsonResponse({"status": "error", "database": "unavailable"}, status=503)
     return JsonResponse({"status": "ok", "database": "ok"})
+
+
+@login_not_required
+@require_safe
+def service_worker(request):
+    """Service worker en la raíz para que su alcance sea todo el sitio.
+
+    Se renderiza sin request: no usa sesión ni context processors.
+    """
+    contenido = render_to_string("pwa/service-worker.js", datos_service_worker())
+    response = HttpResponse(
+        contenido, content_type="application/javascript; charset=utf-8"
+    )
+    # El navegador revalida en cada carga y detecta un deploy nuevo enseguida.
+    response["Cache-Control"] = "no-cache"
+    return response
+
+
+@login_not_required
+@require_safe
+def offline(request):
+    """Página pública que el service worker muestra cuando no hay red."""
+    response = HttpResponse(render_to_string("offline.html"))
+    response["Cache-Control"] = "no-cache"
+    return response

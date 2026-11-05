@@ -47,4 +47,16 @@ Mi cuenta reutiliza el shell privado y agrupa identidad, rol, perfil y cambio de
 
 ## PWA y privacidad
 
-El manifest ofrece iconos PNG de 192 y 512 px, variantes maskable en ambos tamaños y Apple Touch Icon. El service worker `motoservice-static-v14` precarga únicamente CSS, JavaScript, manifest e imágenes propias. Sólo responde desde caché a rutas bajo `/static/`; las páginas autenticadas y los datos privados, incluidas `/guia/`, `/usuarios/`, `/cuenta/` y las vistas de recuperación, siempre dependen de la red y del control de acceso de Django.
+El manifest ofrece iconos PNG de 192 y 512 px, variantes maskable en ambos tamaños y Apple Touch Icon.
+
+El service worker se sirve en `/service-worker.js` desde una vista de `core` que renderiza `templates/pwa/service-worker.js`, con `Content-Type: application/javascript` y `Cache-Control: no-cache`, sin sesión ni context processors. Como se publica en la raíz, su alcance ya es todo el sitio y no necesita `Service-Worker-Allowed`. La lista de precarga vive en `apps/core/pwa.py` y se resuelve con `static()`, la misma función de `{% static %}`: en producción toma las URLs con hash de `CompressedManifestStaticFilesStorage`. El nombre de caché es `motoservice-<versión>-<hash>`, donde el hash cubre esas URLs, el contenido de cada archivo y los templates de la página offline, así que cambia sólo cuando cambia algo precargado. `activate` borra las cachés anteriores.
+
+Estrategia:
+
+- GET bajo `/static/`: cache-first.
+- Navegaciones (`request.mode === "navigate"`): siempre a la red y nunca se guardan. Si la red falla, se responde con la página offline precargada.
+- Todo lo demás (POST, HTMX, otros orígenes, cualquier HTML): el service worker no interviene.
+
+`/offline/` es pública, se renderiza sin request y no contiene datos del usuario ni del taller. Reutiliza `error_base.html` (estilos inline y el logo precargado) y ofrece “Reintentar”, un enlace a la misma URL que funciona sin JavaScript.
+
+Las páginas autenticadas y los datos privados, incluidas la guía, Usuarios, Mi cuenta, recuperación de contraseña, exportaciones y las respuestas HTMX, nunca entran en la caché y siempre dependen de la red y del control de acceso de Django.

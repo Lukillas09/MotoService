@@ -43,7 +43,7 @@ class PrivateHtmlNoStoreMiddleware:
             return False
 
         resolver_match = getattr(request, "resolver_match", None)
-        if resolver_match and resolver_match.url_name in {"login", "service-worker"}:
+        if resolver_match and resolver_match.url_name in {"login", "service-worker", "offline"}:
             return False
 
         content_disposition = response.headers.get("Content-Disposition", "")

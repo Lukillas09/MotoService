@@ -1,9 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
-from django.conf import settings
 from django.urls import include, path
-from django.views.static import serve
 
+from apps.core import views as core_views
 from apps.usuarios import views as usuarios_views
 
 
@@ -40,12 +39,7 @@ urlpatterns = [
         usuarios_views.ContrasenaActualizadaView.as_view(),
         name="password_reset_complete",
     ),
-    path(
-        "service-worker.js",
-        serve,
-        {"path": "service-worker.js", "document_root": settings.BASE_DIR / "static"},
-        name="service-worker",
-    ),
+    path("service-worker.js", core_views.service_worker, name="service-worker"),
     path("clientes/", include("apps.clientes.urls")),
     path("motos/", include("apps.motos.urls")),
     path("servicios/", include("apps.servicios.urls")),

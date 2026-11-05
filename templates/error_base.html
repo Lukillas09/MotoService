@@ -20,7 +20,7 @@
       <div class="code">{% block code %}{% endblock %}</div>
       <h1>{% block heading %}{% endblock %}</h1>
       <p>{% block message %}{% endblock %}</p>
-      <a href="/">Volver al inicio</a>
+      {% block action %}<a href="/">Volver al inicio</a>{% endblock %}
     </section>
   </main>
 </body>
