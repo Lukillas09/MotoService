@@ -65,7 +65,7 @@ class PrivateHtmlNoStoreMiddlewareTests(TestCase):
         self.assertNotIn("Expires", respuesta_procesada.headers)
 
     def test_ruta_estatica_no_es_modificada(self):
-        request = RequestFactory().get(f"{settings.STATIC_URL}css/app.css")
+        request = RequestFactory().get(f"{settings.STATIC_URL}css/tokens.css")
         request.user = self.usuario
         respuesta_original = HttpResponse(
             "<html>recurso simulado</html>",

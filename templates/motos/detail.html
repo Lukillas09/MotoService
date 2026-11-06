@@ -38,7 +38,7 @@
           {% if whatsapp_url %}<a class="btn btn-success" href="{{ whatsapp_url }}" target="_blank" rel="noopener noreferrer">{% include "shared/icon.html" with name="whatsapp" %}WhatsApp</a>{% endif %}
           <a class="btn btn-outline-primary" href="{% url 'motos:update' moto.pk %}">{% include "shared/icon.html" with name="edit" %}Editar moto</a>
           {% if moto.activo %}
-            <form method="post" action="{% url 'motos:archive' moto.pk %}" data-confirm-message="¿Archivar esta moto? Podrás restaurarla más adelante.">{% csrf_token %}<button class="btn btn-outline-danger" type="submit">Archivar</button></form>
+            <form method="post" action="{% url 'motos:archive' moto.pk %}" data-confirm-title="¿Archivar esta moto?" data-confirm-message="La moto deja de aparecer en los listados, en la búsqueda y en las alertas de mantenimiento. Su historial de servicios se conserva y podés restaurarla después." data-confirm-button="Archivar moto" data-confirm-tone="danger">{% csrf_token %}<button class="btn btn-outline-danger" type="submit">Archivar</button></form>
           {% else %}
             <form method="post" action="{% url 'motos:restore' moto.pk %}">{% csrf_token %}<button class="btn btn-success" type="submit">Restaurar moto</button></form>
           {% endif %}

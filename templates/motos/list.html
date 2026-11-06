@@ -27,7 +27,7 @@
         {% if estado == 'archivadas' %}<input type="hidden" name="estado" value="archivadas">{% endif %}
         <label class="visually-hidden" for="motos-search">Buscar motos</label>
         <div class="input-group">
-          <span class="input-group-text bg-white">{% include "shared/icon.html" with name="search" %}</span>
+          <span class="input-group-text">{% include "shared/icon.html" with name="search" %}</span>
           <input id="motos-search" class="form-control" name="q" type="search" value="{{ termino }}" placeholder="Patente, marca, modelo, cliente o teléfono" autocomplete="off">
           <button class="btn btn-outline-primary" type="submit">Buscar</button>
           {% if termino %}<a class="btn btn-outline-secondary" href="{% url 'motos:list' %}{% if estado == 'archivadas' %}?estado=archivadas{% endif %}" aria-label="Limpiar búsqueda">Limpiar</a>{% endif %}

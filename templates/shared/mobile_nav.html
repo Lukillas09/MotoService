@@ -1,3 +1,4 @@
+{% load formato %}
 {% with namespace=request.resolver_match.namespace url_name=request.resolver_match.url_name %}
 <nav class="mobile-bottom-nav" aria-label="Navegación móvil">
   <a class="mobile-nav-link {% if namespace == 'core' and not guia_activa %}active{% endif %}" href="{% url 'core:dashboard' %}" {% if namespace == 'core' and not guia_activa %}aria-current="page"{% endif %}>
@@ -33,9 +34,10 @@
       {% if es_propietario_actual %}<a href="{% url 'exportaciones:index' %}">{% include "shared/icon.html" with name="download" %}<span>Exportaciones</span>{% include "shared/icon.html" with name="chevron-right" extra_class="ms-auto" %}</a>{% endif %}
       <a href="{% url 'core:search' %}">{% include "shared/icon.html" with name="search" %}<span>Búsqueda global</span>{% include "shared/icon.html" with name="chevron-right" extra_class="ms-auto" %}</a>
     </nav>
-    <div class="mobile-user-card mt-auto">
-      <span class="avatar">{{ user.get_username|slice:":1"|upper }}</span>
-      <span class="min-width-0"><strong>{{ user.get_full_name|default:"Usuario del taller" }}</strong><small>{% if rol_usuario_actual == "PROPIETARIO" %}Propietario{% else %}Usuario{% endif %}</small></span>
+    <div class="mt-auto">{% include "shared/selector_tema.html" with prefijo="menu" %}</div>
+    <div class="mobile-user-card">
+      <span class="avatar" aria-hidden="true">{{ user|iniciales_usuario }}</span>
+      <span class="min-width-0"><strong>{{ user.get_full_name|default:user.get_username }}</strong><small>{% if rol_usuario_actual == "PROPIETARIO" %}Propietario{% else %}Usuario{% endif %}</small></span>
     </div>
     <form method="post" action="{% url 'logout' %}">
       {% csrf_token %}

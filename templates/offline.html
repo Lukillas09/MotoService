@@ -1,0 +1,7 @@
+{% extends "error_base.html" %}
+{# Página pública y autocontenida: el service worker la precarga y la muestra sin red. No usa datos del usuario ni del taller. #}
+{% block title %}Sin conexión | MotoService{% endblock %}
+{% block code %}Sin conexión{% endblock %}
+{% block heading %}No hay conexión a internet{% endblock %}
+{% block message %}MotoService necesita conexión para mostrar los datos del taller. Revisá el wifi o los datos móviles y volvé a intentar.{% endblock %}
+{% block action %}<a href="">Reintentar</a>{% endblock %}

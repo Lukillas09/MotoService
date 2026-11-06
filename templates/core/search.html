@@ -5,9 +5,9 @@
 
 {% block content %}
 <div class="content-wrap">
-  <header class="page-header"><div><p class="page-eyebrow">Búsqueda rápida</p><h1 class="page-title">Encontrar cliente o moto</h1><p class="page-subtitle">Buscá por patente, nombre, teléfono, marca o modelo.</p></div></header>
+  <header class="page-header"><div><p class="page-eyebrow">Búsqueda rápida</p><h1 class="page-title">Encontrar cliente, moto o servicio</h1><p class="page-subtitle">Buscá por patente, nombre, teléfono, marca, modelo o trabajo realizado.</p></div></header>
   <form class="card mb-4" method="get" action="{% url 'core:search' %}" role="search">
-    <div class="card-body p-3 p-md-4"><div class="input-group input-group-lg"><span class="input-group-text">{% include "shared/icon.html" with name="search" %}</span><input class="form-control" name="q" type="search" value="{{ termino }}" placeholder="Buscar clientes, motos, servicios..." aria-label="Buscar clientes y motos" autofocus required><button class="btn btn-primary" type="submit">Buscar</button></div></div>
+    <div class="card-body p-3 p-md-4"><div class="input-group input-group-lg"><span class="input-group-text">{% include "shared/icon.html" with name="search" %}</span><input class="form-control" name="q" type="search" value="{{ termino }}" placeholder="Buscar clientes, motos, servicios..." aria-label="Buscar clientes, motos y servicios" autofocus required><button class="btn btn-primary" type="submit">Buscar</button></div></div>
   </form>
 
   {% if termino %}
@@ -18,7 +18,7 @@
           {% for cliente in clientes %}
             <article class="card record-card">
               <div class="card-body search-client-card">
-                <span class="avatar person-avatar-lg">{{ cliente.nombre|slice:":1"|upper }}</span>
+                <span class="avatar person-avatar-lg" aria-hidden="true">{{ cliente.nombre|slice:":1"|upper }}{{ cliente.apellido|slice:":1"|upper }}</span>
                 <div class="min-width-0 flex-grow-1">
                   <h3 class="h6 fw-bold mb-1">{{ cliente.nombre_completo }}</h3>
                   <p class="text-secondary small mb-0">{{ cliente.telefono|default:"Sin teléfono" }} · {{ cliente.cantidad_motos }} moto{{ cliente.cantidad_motos|pluralize:"s" }}</p>
@@ -38,9 +38,30 @@
           {% for moto in motos %}<article class="card record-card moto-card"><div class="card-body moto-card-body">{% include "shared/moto_visual.html" with moto=moto compact=True %}<div class="min-width-0 flex-grow-1"><span class="plate-chip">{{ moto.patente|default:"Sin patente" }}</span><h3 class="h6 fw-bold mt-2 mb-1">{{ moto.marca }} {{ moto.modelo }}</h3><p class="text-secondary small mb-0">{{ moto.cliente.nombre_completo }} · {% if moto.kilometraje_actual != None %}{{ moto.kilometraje_actual|miles }} km{% else %}Kilometraje sin registrar{% endif %}</p></div><a class="btn btn-outline-primary" href="{% url 'motos:detail' moto.pk %}">Ver</a></div></article>{% endfor %}
         </div>{% else %}{% include "shared/empty_state.html" with icon="moto-solid" title="Sin motos" text="No encontramos motos activas con esta búsqueda." %}{% endif %}
       </section>
+      <section class="col-12" aria-labelledby="servicios-title">
+        <div class="section-heading"><div><h2 id="servicios-title" class="h4">Servicios</h2><p>Coincidencias en el historial</p></div><a href="{% url 'servicios:list' %}?q={{ termino|urlencode }}">Ver todos</a></div>
+        {% if servicios %}<div class="d-grid gap-3">
+          {% for servicio in servicios %}
+            <article class="card record-card search-service-card">
+              <div class="card-body">
+                <div class="min-width-0 flex-grow-1">
+                  <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                    <span class="badge {{ servicio.estado|estado_badge }}">{{ servicio.get_estado_display }}</span>
+                    <time class="small text-secondary" datetime="{{ servicio.fecha|date:'Y-m-d' }}">{{ servicio.fecha|date:"d/m/Y" }}</time>
+                    <span class="plate-chip">{{ servicio.moto.patente|default:"Sin patente" }}</span>
+                  </div>
+                  <h3 class="h6 fw-bold mb-1">{{ servicio.moto.marca }} {{ servicio.moto.modelo }} · {{ servicio.cliente.nombre_completo }}</h3>
+                  <p class="text-secondary small mb-0">{% for realizado in servicio.mantenimientos_realizados.all %}{% if not forloop.first %} · {% endif %}{{ realizado.tipo_mantenimiento.nombre }}{% empty %}{{ servicio.trabajos_adicionales|truncatechars:90|default:"Sin trabajos detallados" }}{% endfor %}</p>
+                </div>
+                <a class="btn btn-outline-primary" href="{% url 'servicios:detail' servicio.pk %}">Ver</a>
+              </div>
+            </article>
+          {% endfor %}
+        </div>{% else %}{% include "shared/empty_state.html" with icon="service-gear" title="Sin servicios" text="No encontramos servicios con esta búsqueda." %}{% endif %}
+      </section>
     </div>
   {% else %}
-    {% include "shared/empty_state.html" with icon="search" title="Ingresá un dato para buscar" text="Podés usar patente, nombre, teléfono, marca o modelo." %}
+    {% include "shared/empty_state.html" with icon="search" title="Ingresá un dato para buscar" text="Podés usar patente, nombre, teléfono, marca, modelo o un trabajo realizado." %}
   {% endif %}
 </div>
 {% endblock %}

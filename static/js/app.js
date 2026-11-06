@@ -6,6 +6,73 @@ if ("serviceWorker" in navigator) {
 
 const loadingBar = document.querySelector("#global-loading");
 
+// Tema: Automático (sigue al sistema), Claro u Oscuro. El script inline de base.html
+// aplica la preferencia guardada antes del CSS; acá se cambia y se sincroniza.
+const THEME_KEY = "motoservice-tema";
+const THEMES = ["auto", "light", "dark"];
+const darkQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+
+const readTheme = () => {
+  try {
+    const value = localStorage.getItem(THEME_KEY);
+    return THEMES.includes(value) ? value : "auto";
+  } catch {
+    return "auto";
+  }
+};
+
+const applyTheme = (theme) => {
+  const root = document.documentElement;
+  const dark = theme === "dark" || (theme === "auto" && Boolean(darkQuery?.matches));
+  // Sin transiciones durante el cambio: los colores no se animan.
+  root.classList.add("theme-switching");
+  if (theme === "auto") root.removeAttribute("data-theme");
+  else root.dataset.theme = theme;
+  root.dataset.bsTheme = dark ? "dark" : "light";
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => root.classList.remove("theme-switching"));
+  });
+
+  // Con un tema forzado, la barra del navegador usa ese color sin importar el sistema.
+  document.querySelectorAll('meta[name="theme-color"][data-tema]').forEach((meta) => {
+    meta.dataset.color ||= meta.content;
+    const forced = document.querySelector(`meta[name="theme-color"][data-tema="${dark ? "dark" : "light"}"]`);
+    meta.content = theme === "auto" ? meta.dataset.color : forced.dataset.color || forced.content;
+  });
+
+  document.querySelectorAll("[data-theme-picker] input[type='radio']").forEach((input) => {
+    input.checked = input.value === theme;
+  });
+};
+
+document.querySelectorAll("[data-theme-picker]").forEach((picker) => {
+  picker.hidden = false;
+});
+applyTheme(readTheme());
+
+document.addEventListener("change", (event) => {
+  const input = event.target;
+  if (!input.matches?.("[data-theme-picker] input[type='radio']") || !THEMES.includes(input.value)) return;
+  try {
+    localStorage.setItem(THEME_KEY, input.value);
+  } catch {
+    // Sin almacenamiento el tema vale sólo para esta página.
+  }
+  applyTheme(input.value);
+});
+
+darkQuery?.addEventListener?.("change", () => {
+  if (readTheme() === "auto") applyTheme("auto");
+});
+
+// El HTML trae "Ctrl K"; en Mac/iOS el atajo real es ⌘K.
+const platform = navigator.userAgentData?.platform || navigator.platform || "";
+if (/mac|iphone|ipad|ipod/i.test(platform)) {
+  document.querySelectorAll(".search-hint").forEach((hint) => {
+    hint.textContent = "⌘K";
+  });
+}
+
 document.addEventListener("keydown", (event) => {
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
     const search = document.querySelector("#global-search");
@@ -16,17 +83,99 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+// Confirmación de acciones: modal propio para forms con data-confirm-message.
+const confirmModal = document.querySelector("#confirm-modal");
+const CONFIRM_TONES = {
+  danger: "btn-confirm-danger",
+  warning: "btn-confirm-warning",
+  primary: "btn-primary",
+};
+let pendingConfirmation = null;
+
+const resubmitConfirmed = (form, submitter) => {
+  // La segunda vuelta no vuelve a pedir confirmación y conserva el botón
+  // usado (nombre y valor), así HTMX y el estado is-submitting funcionan igual.
+  form.dataset.confirmed = "true";
+  if (typeof form.requestSubmit === "function") {
+    form.requestSubmit(submitter?.form === form ? submitter : undefined);
+    return;
+  }
+  if (submitter?.name) {
+    const hidden = document.createElement("input");
+    hidden.type = "hidden";
+    hidden.name = submitter.name;
+    hidden.value = submitter.value;
+    form.append(hidden);
+  }
+  form.submit();
+};
+
+const openConfirmation = (form, submitter) => {
+  const tone = CONFIRM_TONES[form.dataset.confirmTone] ? form.dataset.confirmTone : "danger";
+  const accept = confirmModal.querySelector("[data-confirm-accept]");
+  confirmModal.querySelector("#confirm-modal-title").textContent =
+    form.dataset.confirmTitle || "¿Confirmás esta acción?";
+  confirmModal.querySelector("#confirm-modal-message").textContent = form.dataset.confirmMessage;
+  accept.textContent = form.dataset.confirmButton || "Confirmar";
+  accept.className = `btn ${CONFIRM_TONES[tone]}`;
+  pendingConfirmation = {
+    form,
+    submitter,
+    tone,
+    confirmed: false,
+    returnFocus: submitter || document.activeElement,
+  };
+  window.bootstrap.Modal.getOrCreateInstance(confirmModal).show();
+};
+
+if (confirmModal) {
+  confirmModal.addEventListener("shown.bs.modal", () => {
+    // En acciones destructivas el foco arranca en "Cancelar".
+    const selector = pendingConfirmation?.tone === "primary" ? "[data-confirm-accept]" : "[data-confirm-cancel]";
+    confirmModal.querySelector(selector)?.focus();
+  });
+  confirmModal.querySelector("[data-confirm-accept]").addEventListener("click", () => {
+    if (!pendingConfirmation) return;
+    pendingConfirmation.confirmed = true;
+    window.bootstrap.Modal.getOrCreateInstance(confirmModal).hide();
+  });
+  confirmModal.addEventListener("hidden.bs.modal", () => {
+    // Cancelar, Escape o clic afuera llegan acá sin confirmar.
+    const pending = pendingConfirmation;
+    pendingConfirmation = null;
+    if (!pending) return;
+    if (pending.returnFocus?.isConnected) pending.returnFocus.focus();
+    if (pending.confirmed) resubmitConfirmed(pending.form, pending.submitter);
+  });
+}
+
+// Fase de captura: corre antes que HTMX y que el estado is-submitting.
+document.addEventListener(
+  "submit",
+  (event) => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement) || !form.matches("[data-confirm-message]")) return;
+    if (form.dataset.confirmed === "true") {
+      delete form.dataset.confirmed;
+      return;
+    }
+    if (!confirmModal || !window.bootstrap?.Modal) {
+      if (!window.confirm(form.dataset.confirmMessage)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+      return;
+    }
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (!pendingConfirmation) openConfirmation(form, event.submitter || null);
+  },
+  true
+);
+
 document.addEventListener("submit", (event) => {
   const form = event.target.closest("form");
   if (!form) return;
-
-  if (
-    form.matches("[data-confirm-message]") &&
-    !window.confirm(form.dataset.confirmMessage)
-  ) {
-    event.preventDefault();
-    return;
-  }
 
   if ((form.method || "get").toLowerCase() !== "post") return;
 

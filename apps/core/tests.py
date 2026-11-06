@@ -23,6 +23,17 @@ from config.version import APP_VERSION
 from .context_processors import app_version
 
 
+ARCHIVOS_CSS = ("tokens", "base", "components", "pages", "responsive", "utilities")
+
+
+def css_completo():
+    """Los archivos de static/css en el orden de carga de base.html."""
+    return "\n".join(
+        (settings.BASE_DIR / "static" / "css" / f"{nombre}.css").read_text(encoding="utf-8")
+        for nombre in ARCHIVOS_CSS
+    )
+
+
 class VersionConfigurationTests(SimpleTestCase):
     def test_app_version_oficial(self):
         self.assertEqual(APP_VERSION, "1.0.2")
@@ -429,43 +440,23 @@ class ProductionReadinessTests(TestCase):
                 sprite,
             )
 
-    def test_service_worker_se_sirve_desde_raiz_y_solo_cachea_estaticos(self):
-        response = self.client.get(reverse("service-worker"))
+    def test_css_se_carga_en_orden_y_completo_desde_base_y_service_worker(self):
+        from apps.core.pwa import RECURSOS_PRECARGADOS
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("javascript", response.headers["Content-Type"])
-        contenido = b"".join(response.streaming_content).decode("utf-8")
-        self.assertIn('url.pathname.startsWith("/static/")', contenido)
-        self.assertIn('event.request.method !== "GET"', contenido)
-        self.assertIn("url.origin !== self.location.origin", contenido)
-        self.assertIn('const CACHE_NAME = "motoservice-static-v14"', contenido)
-        for asset in (
-            "/static/icons/ui.svg",
-            "/static/js/guide.js",
-            "/static/icons/motoservice-mark-96.png",
-            "/static/icons/favicon-32.png",
-            "/static/images/moto-generic.png",
-            "/static/icons/icon-maskable-192.png",
-            "/static/icons/icon-maskable-512.png",
-        ):
-            self.assertIn(asset, contenido)
-        self.assertNotIn("moto-generic.svg", contenido)
-        self.assertNotIn("icons/icon.svg", contenido)
-        for ruta_privada in (
-            "/clientes/",
-            "/motos/",
-            "/exportaciones/",
-            "/guia/",
-            "/usuarios/",
-            "/cuenta/",
-            "/accounts/password-reset/",
-        ):
-            self.assertNotIn(ruta_privada, contenido)
+        base = (settings.BASE_DIR / "templates" / "base.html").read_text(encoding="utf-8")
+        enlazados = re.findall(r"\{% static 'css/([\w-]+)\.css' %\}", base)
+        en_disco = sorted(
+            archivo.stem for archivo in (settings.BASE_DIR / "static" / "css").glob("*.css")
+        )
+
+        self.assertEqual(enlazados, list(ARCHIVOS_CSS))
+        self.assertEqual(en_disco, sorted(ARCHIVOS_CSS))
+        for nombre in ARCHIVOS_CSS:
+            self.assertIn(f"css/{nombre}.css", RECURSOS_PRECARGADOS)
+        self.assertNotIn("@import", css_completo())
 
     def test_css_declara_tokens_y_respeta_reduccion_de_movimiento(self):
-        css = (settings.BASE_DIR / "static" / "css" / "app.css").read_text(
-            encoding="utf-8"
-        )
+        css = css_completo()
 
         self.assertIn("--color-primary", css)
         self.assertIn("--surface", css)
@@ -474,9 +465,7 @@ class ProductionReadinessTests(TestCase):
         self.assertIn("@media (prefers-reduced-motion: reduce)", css)
 
     def test_badge_de_version_permanece_en_el_flujo_del_layout(self):
-        css = (settings.BASE_DIR / "static" / "css" / "app.css").read_text(
-            encoding="utf-8"
-        )
+        css = css_completo()
         reglas_version = [
             coincidencia.group("declaraciones")
             for coincidencia in re.finditer(

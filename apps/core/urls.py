@@ -11,4 +11,5 @@ urlpatterns = [
     path("guia/", views.guia_index, name="guia"),
     path("guia/<slug:slug>/", views.guia_tema, name="guia_tema"),
     path("healthz/", views.healthz, name="healthz"),
+    path("offline/", views.offline, name="offline"),
 ]

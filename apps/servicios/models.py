@@ -53,6 +53,7 @@ class ServicioQuerySet(models.QuerySet):
                     mantenimientos_realizados__tipo_mantenimiento__nombre__icontains=parte
                 )
                 | Q(trabajos_adicionales__icontains=parte)
+                | Q(observaciones__icontains=parte)
             )
             patente = normalizar_patente(parte)
             if patente:

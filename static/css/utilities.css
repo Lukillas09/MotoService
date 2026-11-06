@@ -1,0 +1,27 @@
+/* Utilidades de una sola responsabilidad. Se cargan al final para ganar a las reglas
+   de componentes; .text-secondary y .shadow-sm reemplazan utilidades de Bootstrap. */
+
+.min-width-0 {
+  min-width: 0;
+}
+
+.preserve-lines {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.text-secondary {
+  color: var(--color-muted) !important;
+}
+
+.shadow-sm {
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.text-ink {
+  color: var(--color-ink);
+}
+
+.app-touch-target {
+  min-height: 2.75rem;
+}

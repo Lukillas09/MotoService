@@ -1,0 +1,17 @@
+{% comment %}
+Selector de tema (Automático, Claro, Oscuro). La preferencia vive en localStorage del
+dispositivo, así que sin JavaScript no tiene efecto: queda oculto hasta que app.js lo activa.
+Parámetro: prefijo (para ids únicos cuando hay más de un selector en la página).
+{% endcomment %}
+<fieldset class="theme-picker" data-theme-picker hidden>
+  <legend class="theme-picker-label">Tema</legend>
+  <div class="btn-group w-100" role="group">
+    <input class="btn-check" type="radio" name="tema-{{ prefijo }}" id="tema-{{ prefijo }}-auto" value="auto" autocomplete="off">
+    <label class="btn btn-outline-primary" for="tema-{{ prefijo }}-auto">Automático</label>
+    <input class="btn-check" type="radio" name="tema-{{ prefijo }}" id="tema-{{ prefijo }}-light" value="light" autocomplete="off">
+    <label class="btn btn-outline-primary" for="tema-{{ prefijo }}-light">Claro</label>
+    <input class="btn-check" type="radio" name="tema-{{ prefijo }}" id="tema-{{ prefijo }}-dark" value="dark" autocomplete="off">
+    <label class="btn btn-outline-primary" for="tema-{{ prefijo }}-dark">Oscuro</label>
+  </div>
+  <p class="theme-picker-help">Automático sigue la configuración del dispositivo. Se guarda sólo en este navegador.</p>
+</fieldset>

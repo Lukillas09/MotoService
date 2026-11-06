@@ -45,6 +45,7 @@ Versión actual: **v1.0.2**.
 - Excel completo con todos los datos operativos;
 - backup manual recuperable del schema PostgreSQL mediante `pg_dump`;
 - interfaz final responsive con sidebar y topbar en escritorio;
+- modo oscuro con tres modos (Automático, Claro, Oscuro), elegible en Mi cuenta y en el menú “Más”;
 - navegación inferior y menú contextual en móvil;
 - representación visual genérica de motos sin fotos ni almacenamiento multimedia;
 - PWA instalable con iconos PNG, icono maskable y caché exclusiva de recursos estáticos;
@@ -118,7 +119,7 @@ Las motos se representan con `static/images/moto-generic.png`, un asset optimiza
 
 La guía de uso vive dentro de la aplicación, requiere iniciar sesión y se mantiene junto con el código, sin modelos ni CMS. Incluye tutoriales del flujo operativo, ayuda contextual y capturas generadas sobre una base local aislada con datos ficticios. El inventario de capturas está en [docs/guia.md](docs/guia.md).
 
-El service worker sólo intercepta solicitudes `GET` del mismo origen bajo `/static/`. No almacena dashboard, clientes, motos, exportaciones ni ninguna otra respuesta privada. La aplicación requiere conexión para acceder a los datos del taller.
+El service worker se genera desde una vista en `/service-worker.js`, precarga los estáticos con sus URLs con hash y la página `/offline/`, y responde desde caché sólo a `GET` del mismo origen bajo `/static/`. Las navegaciones van siempre a la red y, sin conexión, muestran la página offline. No almacena dashboard, clientes, motos, exportaciones ni ninguna otra respuesta privada. La aplicación requiere conexión para acceder a los datos del taller.
 
 ## Variables de entorno
 
@@ -196,7 +197,8 @@ gunicorn.conf.py        Configuración de Gunicorn
 config/                 Configuración Django y settings por entorno
 apps/                   Apps internas del proyecto
 templates/              Templates globales
-static/                 CSS, JavaScript, manifest, service worker e iconos PWA
+static/                 CSS, JavaScript, manifest e iconos PWA
+templates/pwa/          Service worker renderizado por Django
 docs/                   Documentación de producto y arquitectura
 ```
 

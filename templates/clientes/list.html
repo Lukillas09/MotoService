@@ -27,7 +27,7 @@
         {% if estado == 'archivados' %}<input type="hidden" name="estado" value="archivados">{% endif %}
         <label class="visually-hidden" for="clientes-search">Buscar clientes</label>
         <div class="input-group">
-          <span class="input-group-text bg-white">{% include "shared/icon.html" with name="search" %}</span>
+          <span class="input-group-text">{% include "shared/icon.html" with name="search" %}</span>
           <input id="clientes-search" class="form-control" name="q" type="search" value="{{ termino }}" placeholder="Nombre, apellido, teléfono o email" autocomplete="off">
           <button class="btn btn-outline-primary" type="submit">Buscar</button>
           {% if termino %}<a class="btn btn-outline-secondary" href="{% url 'clientes:list' %}{% if estado == 'archivados' %}?estado=archivados{% endif %}" aria-label="Limpiar búsqueda">Limpiar</a>{% endif %}
